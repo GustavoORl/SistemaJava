@@ -1,0 +1,13 @@
+# Arquivos compilados do Java
+*.class
+
+# Pastas geradas pelo NetBeans
+/build/
+/dist/
+
+# Configurações locais
+/nbproject/private/
+
+# Arquivos temporários
+*.log
+.DS_Store

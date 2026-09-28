@@ -1,21 +1,37 @@
 package view;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.*;
+import java.awt.font.FontRenderContext;
+import java.awt.font.TextLayout;
+import java.awt.geom.Area;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D;
+import java.awt.geom.RoundRectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * CoStock Dashboard
  *
- * Interface Swing baseada na referência visual fornecida.
- * - Header fixo: logo (esq.) + barra de pesquisa (centro) + botão de conta/login (dir.)
- * - Navbar lateral: botões de navegação reais entre as telas da plataforma
- * - Cards do painel: apenas para visualização (dados estáticos)
+ * Estrutura:
+ *  - Header de ponta a ponta: logo (esquerda), pesquisa (centro), conta/login (direita)
+ *  - Navbar lateral: botoes de navegacao da plataforma (sem icones)
+ *  - Cards: apenas visualizacao
+ *
+ * Recursos esperados no classpath (pasta resources/):
+ *  - /images/logo.png
+ *  - /fonts/Poppins-Regular.ttf, Poppins-Medium.ttf, Poppins-SemiBold.ttf
  */
 public class CoStockDashboard extends JFrame {
 
@@ -45,11 +61,14 @@ public class CoStockDashboard extends JFrame {
     private static final Color YELLOW = Color.decode("#BDA20C");
     private static final Color YELLOW_DARK = Color.decode("#A48D08");
 
-    private static final Color TEXT_GRAY = Color.decode("#777777");
-    private static final Color BORDER_GRAY = Color.decode("#E5E5E5");
+    private static final Color TEXT_GRAY = Color.decode("#666666");
+    private static final Color PLACEHOLDER_GRAY = Color.decode("#8A8A8A");
+    private static final Color BORDER_GRAY = Color.decode("#E3E3E3");
+    private static final Color SEARCH_BG = Color.decode("#FFF7EE");
+    private static final Color HOVER_GRAY = Color.decode("#F4F4F4");
 
     // =========================================================
-    // DADOS (estáticos, apenas para visualização)
+    // DADOS (estaticos, apenas para visualizacao)
     // =========================================================
 
     private static final String VENDAS_HOJE = "1.500,00";
@@ -69,17 +88,36 @@ public class CoStockDashboard extends JFrame {
     private static Font POPPINS_SEMIBOLD;
 
     // =========================================================
-    // DIMENSÕES
+    // DIMENSOES
     // =========================================================
 
-    private static final int SIDEBAR_WIDTH = 235;
-    private static final int HEADER_HEIGHT = 82;
+    private static final int SIDEBAR_WIDTH = 250;
+    private static final int HEADER_HEIGHT = 100;
+    private static final int HEADER_SIDE_WIDTH = 350;
+    private static final int LOGO_HEIGHT = 70;
+    private static final int MENU_ITEM_HEIGHT = 62;
 
     // =========================================================
-    // NAVEGAÇÃO
+    // NAVEGACAO
     // =========================================================
 
-    private record MenuEntry(String key, String label) {
+    private static final class MenuEntry {
+
+        private final String key;
+        private final String label;
+
+        MenuEntry(String key, String label) {
+            this.key = key;
+            this.label = label;
+        }
+
+        String key() {
+            return key;
+        }
+
+        String label() {
+            return label;
+        }
     }
 
     private static final MenuEntry[] MENU_ENTRIES = {
@@ -111,16 +149,19 @@ public class CoStockDashboard extends JFrame {
         setTitle("CoStock");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        setSize(1280, 720);
-        setMinimumSize(new Dimension(980, 620));
+        setSize(1366, 768);
+        setMinimumSize(new Dimension(1140, 680));
 
         setLocationRelativeTo(null);
 
         buildInterface();
+
+        // Abre ocupando a tela inteira (mais espaco para fontes maiores)
+        setExtendedState(JFrame.MAXIMIZED_BOTH);
     }
 
     // =========================================================
-    // CONSTRUÇÃO
+    // CONSTRUCAO
     // =========================================================
 
     private void buildInterface() {
@@ -128,14 +169,100 @@ public class CoStockDashboard extends JFrame {
         JPanel root = new JPanel(new BorderLayout());
         root.setBackground(WHITE);
 
+        // Header ocupa a largura toda, por cima da navbar
+        root.add(createHeader(), BorderLayout.NORTH);
         root.add(createSidebar(), BorderLayout.WEST);
-        root.add(createMainArea(), BorderLayout.CENTER);
+        root.add(createContentContainer(), BorderLayout.CENTER);
 
         setContentPane(root);
     }
 
     // =========================================================
-    // SIDEBAR (navegação real entre telas)
+    // HEADER (de ponta a ponta)
+    // =========================================================
+
+    private JPanel createHeader() {
+
+        JPanel header = new JPanel(new BorderLayout());
+        header.setBackground(WHITE);
+        header.setPreferredSize(new Dimension(0, HEADER_HEIGHT));
+
+        // ---- Logo (canto superior esquerdo) ----
+        JPanel left = new JPanel(new GridBagLayout());
+        left.setOpaque(false);
+        left.setPreferredSize(new Dimension(HEADER_SIDE_WIDTH, HEADER_HEIGHT));
+
+        GridBagConstraints lc = new GridBagConstraints();
+        lc.anchor = GridBagConstraints.WEST;
+        lc.weightx = 1;
+        lc.insets = new Insets(0, 26, 0, 0);
+        left.add(new LogoView(), lc);
+
+        // ---- Pesquisa (centro) ----
+        JPanel center = new JPanel(new GridBagLayout());
+        center.setOpaque(false);
+        center.add(new SearchField(this::searchAndNavigate));
+
+        // ---- Conta / login (canto superior direito) ----
+        JPanel right = new JPanel(new GridBagLayout());
+        right.setOpaque(false);
+        right.setPreferredSize(new Dimension(HEADER_SIDE_WIDTH, HEADER_HEIGHT));
+
+        GridBagConstraints rc = new GridBagConstraints();
+        rc.anchor = GridBagConstraints.EAST;
+        rc.weightx = 1;
+        rc.insets = new Insets(0, 0, 0, 22);
+        right.add(new UserAccountButton(), rc);
+
+        header.add(left, BorderLayout.WEST);
+        header.add(center, BorderLayout.CENTER);
+        header.add(right, BorderLayout.EAST);
+
+        JPanel line = new JPanel();
+        line.setBackground(BORDER_GRAY);
+        line.setPreferredSize(new Dimension(0, 1));
+
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(WHITE);
+        wrapper.add(header, BorderLayout.CENTER);
+        wrapper.add(line, BorderLayout.SOUTH);
+
+        return wrapper;
+    }
+
+    /**
+     * Pesquisa simples: leva para a secao da navbar cujo nome combina
+     * com o texto digitado (sem diferenciar maiusculas nem acentos).
+     */
+    private void searchAndNavigate(String query) {
+
+        String q = normalize(query);
+        if (q.isEmpty()) {
+            return;
+        }
+
+        for (MenuEntry entry : MENU_ENTRIES) {
+            if (normalize(entry.label()).contains(q)) {
+                selectPage(entry.key());
+                return;
+            }
+        }
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Nenhum resultado para \"" + query + "\".",
+                "Pesquisar",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+
+    private static String normalize(String text) {
+        String n = Normalizer.normalize(text, Normalizer.Form.NFD);
+        return n.replaceAll("\\p{M}", "").trim().toLowerCase();
+    }
+
+    // =========================================================
+    // SIDEBAR
     // =========================================================
 
     private JPanel createSidebar() {
@@ -147,16 +274,14 @@ public class CoStockDashboard extends JFrame {
         JPanel menu = new JPanel();
         menu.setOpaque(false);
         menu.setLayout(new BoxLayout(menu, BoxLayout.Y_AXIS));
-        menu.add(Box.createVerticalStrut(15));
+        menu.add(Box.createVerticalStrut(18));
 
         for (MenuEntry entry : MENU_ENTRIES) {
-
-            boolean selected = entry.key().equals(DEFAULT_PAGE);
 
             MenuButton button = new MenuButton(
                     entry.key(),
                     entry.label(),
-                    selected
+                    entry.key().equals(DEFAULT_PAGE)
             );
 
             menuButtons.add(button);
@@ -167,11 +292,11 @@ public class CoStockDashboard extends JFrame {
 
         JPanel logout = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         logout.setOpaque(false);
-        logout.setBorder(new EmptyBorder(0, 42, 30, 0));
+        logout.setBorder(new EmptyBorder(0, 32, 30, 0));
 
         JLabel sair = new JLabel("<html><u>Sair da Conta</u></html>");
         sair.setForeground(WHITE);
-        sair.setFont(poppinsMedium(14));
+        sair.setFont(poppinsMedium(17));
         sair.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         sair.addMouseListener(new MouseAdapter() {
             @Override
@@ -186,9 +311,6 @@ public class CoStockDashboard extends JFrame {
         return sidebar;
     }
 
-    /**
-     * Atualiza o botão selecionado e troca a tela exibida no conteúdo.
-     */
     private void selectPage(String key) {
 
         for (MenuButton button : menuButtons) {
@@ -215,14 +337,26 @@ public class CoStockDashboard extends JFrame {
         }
     }
 
+    private void showComingSoon(String what) {
+        JOptionPane.showMessageDialog(
+                this,
+                what + " ainda est\u00e1 em constru\u00e7\u00e3o.",
+                "CoStock",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+    }
+
     // =========================================================
-    // BOTÃO DE MENU (sidebar)
+    // BOTAO DE MENU (sidebar) - sem icones, com hover e teclado
     // =========================================================
 
     private class MenuButton extends JPanel {
 
+        private static final int RIGHT_MARGIN = 18;
+
         private final String key;
         private boolean selected;
+        private boolean hover;
         private final JLabel textLabel;
 
         MenuButton(String key, String label, boolean selected) {
@@ -232,13 +366,14 @@ public class CoStockDashboard extends JFrame {
 
             setOpaque(false);
             setLayout(new BorderLayout());
-            setBorder(new EmptyBorder(0, 28, 0, 10));
+            setBorder(new EmptyBorder(0, 32, 0, 10));
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            setPreferredSize(new Dimension(SIDEBAR_WIDTH, 53));
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, 53));
+            setPreferredSize(new Dimension(SIDEBAR_WIDTH, MENU_ITEM_HEIGHT));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, MENU_ITEM_HEIGHT));
+            setFocusable(true);
 
             textLabel = new JLabel(label);
-            textLabel.setFont(poppinsMedium(15));
+            textLabel.setFont(poppinsMedium(19));
             textLabel.setForeground(selected ? ORANGE : WHITE);
             add(textLabel, BorderLayout.CENTER);
 
@@ -247,7 +382,41 @@ public class CoStockDashboard extends JFrame {
                 public void mouseClicked(MouseEvent e) {
                     selectPage(MenuButton.this.key);
                 }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    hover = true;
+                    repaint();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hover = false;
+                    repaint();
+                }
             });
+
+            addFocusListener(new FocusAdapter() {
+                @Override
+                public void focusGained(FocusEvent e) {
+                    repaint();
+                }
+
+                @Override
+                public void focusLost(FocusEvent e) {
+                    repaint();
+                }
+            });
+
+            Action activate = new AbstractAction() {
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    selectPage(MenuButton.this.key);
+                }
+            };
+            getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("ENTER"), "activate");
+            getInputMap(WHEN_FOCUSED).put(KeyStroke.getKeyStroke("SPACE"), "activate");
+            getActionMap().put("activate", activate);
         }
 
         String getKey() {
@@ -260,39 +429,42 @@ public class CoStockDashboard extends JFrame {
             repaint();
         }
 
+        /** Pilula encostada na borda esquerda, arredondada so na direita. */
+        private Shape pill() {
+            int h = getHeight() - 8;
+            return new RoundRectangle2D.Double(
+                    -h, 4, getWidth() + h - RIGHT_MARGIN, h, h, h
+            );
+        }
+
         @Override
         protected void paintComponent(Graphics graphics) {
 
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
             if (selected) {
-
-                Graphics2D g = (Graphics2D) graphics.create();
-                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-                int h = getHeight();
                 g.setColor(WHITE);
-                g.fillRoundRect(0, 0, getWidth(), h, h, h);
-
-                g.dispose();
+                g.fill(pill());
+            } else if (hover) {
+                g.setColor(new Color(255, 255, 255, 55));
+                g.fill(pill());
             }
 
+            if (isFocusOwner()) {
+                g.setColor(selected ? ORANGE : WHITE);
+                g.setStroke(new BasicStroke(2f));
+                g.draw(pill());
+            }
+
+            g.dispose();
             super.paintComponent(graphics);
         }
     }
 
     // =========================================================
-    // ÁREA PRINCIPAL
+    // CONTEUDO
     // =========================================================
-
-    private JPanel createMainArea() {
-
-        JPanel main = new JPanel(new BorderLayout());
-        main.setBackground(WHITE);
-
-        main.add(createHeader(), BorderLayout.NORTH);
-        main.add(createContentContainer(), BorderLayout.CENTER);
-
-        return main;
-    }
 
     private JPanel createContentContainer() {
 
@@ -324,17 +496,17 @@ public class CoStockDashboard extends JFrame {
         textWrapper.setLayout(new BoxLayout(textWrapper, BoxLayout.Y_AXIS));
 
         JLabel heading = new JLabel(title);
-        heading.setFont(poppinsSemibold(22));
+        heading.setFont(poppinsSemibold(32));
         heading.setForeground(BLACK);
         heading.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel subtitle = new JLabel("Esta se\u00e7\u00e3o ainda est\u00e1 em constru\u00e7\u00e3o.");
-        subtitle.setFont(poppins(13));
+        subtitle.setFont(poppins(18));
         subtitle.setForeground(TEXT_GRAY);
         subtitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         textWrapper.add(heading);
-        textWrapper.add(Box.createVerticalStrut(8));
+        textWrapper.add(Box.createVerticalStrut(10));
         textWrapper.add(subtitle);
 
         page.add(textWrapper);
@@ -343,144 +515,14 @@ public class CoStockDashboard extends JFrame {
     }
 
     // =========================================================
-    // HEADER
-    // =========================================================
-
-    private JPanel createHeader() {
-
-        JPanel header = new JPanel(new BorderLayout());
-        header.setBackground(WHITE);
-        header.setPreferredSize(new Dimension(0, HEADER_HEIGHT));
-
-        // -----------------------------------------------------
-        // LOGO (canto superior esquerdo)
-        // -----------------------------------------------------
-
-        JPanel logoPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        logoPanel.setOpaque(false);
-        logoPanel.setBorder(new EmptyBorder(10, 20, 0, 0));
-
-        LogoView logo = new LogoView();
-        logo.setPreferredSize(new Dimension(46, 46));
-        logoPanel.add(logo);
-
-        JPanel logoText = new JPanel();
-        logoText.setOpaque(false);
-        logoText.setLayout(new BoxLayout(logoText, BoxLayout.Y_AXIS));
-
-        JLabel title = new JLabel("CoStock");
-        title.setFont(poppinsSemibold(21));
-        title.setForeground(ORANGE);
-
-        JLabel subtitle = new JLabel("Sistema Inteligente de Gest\u00e3o");
-        subtitle.setFont(poppins(9));
-        subtitle.setForeground(TEXT_GRAY);
-
-        logoText.add(Box.createVerticalStrut(6));
-        logoText.add(title);
-        logoText.add(subtitle);
-
-        logoPanel.add(logoText);
-        header.add(logoPanel, BorderLayout.WEST);
-
-        // -----------------------------------------------------
-        // PESQUISA (centro)
-        // -----------------------------------------------------
-
-        JPanel searchArea = new JPanel(new GridBagLayout());
-        searchArea.setOpaque(false);
-
-        SearchField search = new SearchField();
-        search.setPreferredSize(new Dimension(350, 37));
-
-        searchArea.add(search);
-        header.add(searchArea, BorderLayout.CENTER);
-
-        // -----------------------------------------------------
-        // CONTA / LOGIN (canto superior direito)
-        // -----------------------------------------------------
-
-        header.add(new UserAccountButton(), BorderLayout.EAST);
-
-        JPanel line = new JPanel();
-        line.setBackground(BORDER_GRAY);
-        line.setPreferredSize(new Dimension(0, 1));
-
-        JPanel wrapper = new JPanel(new BorderLayout());
-        wrapper.setBackground(WHITE);
-        wrapper.add(header, BorderLayout.CENTER);
-        wrapper.add(line, BorderLayout.SOUTH);
-
-        return wrapper;
-    }
-
-    /**
-     * Bloco de conta do usuário no header — funciona como botão de
-     * login/conta: ao clicar, abre um menu com as ações disponíveis.
-     */
-    private class UserAccountButton extends JPanel {
-
-        UserAccountButton() {
-
-            setOpaque(false);
-            setLayout(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-            setBorder(new EmptyBorder(17, 0, 0, 25));
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-
-            UserIcon userIcon = new UserIcon();
-            userIcon.setPreferredSize(new Dimension(32, 32));
-            add(userIcon);
-
-            JPanel userText = new JPanel();
-            userText.setOpaque(false);
-            userText.setLayout(new BoxLayout(userText, BoxLayout.Y_AXIS));
-
-            JLabel name = new JLabel("Isabel Lopes");
-            name.setFont(poppinsSemibold(12));
-            name.setForeground(BLACK);
-
-            JLabel role = new JLabel("Operador de Caixa");
-            role.setFont(poppins(9));
-            role.setForeground(Color.decode("#999999"));
-
-            userText.add(name);
-            userText.add(role);
-
-            add(Box.createHorizontalStrut(6));
-            add(userText);
-
-            JPopupMenu menu = new JPopupMenu();
-            menu.add(buildMenuItem("Meu perfil", e -> selectPage("clientes")));
-            menu.add(buildMenuItem("Configura\u00e7\u00f5es", e -> {
-            }));
-            menu.addSeparator();
-            menu.add(buildMenuItem("Sair da conta", e -> confirmLogout()));
-
-            addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    menu.show(UserAccountButton.this, getWidth() - 160, getHeight() + 5);
-                }
-            });
-        }
-
-        private JMenuItem buildMenuItem(String text, ActionListener listener) {
-            JMenuItem item = new JMenuItem(text);
-            item.setFont(poppinsMedium(12));
-            item.addActionListener(listener);
-            return item;
-        }
-    }
-
-    // =========================================================
-    // DASHBOARD COM SCROLL
+    // DASHBOARD
     // =========================================================
 
     private JScrollPane createDashboardScroll() {
 
-        JPanel dashboard = new JPanel(new GridBagLayout());
+        JPanel dashboard = new ScrollableDashboardPanel(new GridBagLayout());
         dashboard.setBackground(WHITE);
-        dashboard.setBorder(new EmptyBorder(27, 30, 30, 30));
+        dashboard.setBorder(new EmptyBorder(28, 32, 30, 32));
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
@@ -489,14 +531,8 @@ public class CoStockDashboard extends JFrame {
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.NORTHWEST;
 
-        // -----------------------------------------------------
-        // GESTÃO DE VENDAS
-        // -----------------------------------------------------
-
-        JLabel vendas = new JLabel("Gest\u00e3o de vendas");
-        vendas.setFont(poppinsSemibold(25));
-        vendas.setForeground(BLACK);
-        dashboard.add(vendas, gbc);
+        // ---- Gestao de vendas ----
+        dashboard.add(sectionTitle("Gest\u00e3o de vendas"), gbc);
 
         gbc.gridy++;
         gbc.insets = new Insets(16, 0, 0, 0);
@@ -526,17 +562,10 @@ public class CoStockDashboard extends JFrame {
 
         dashboard.add(salesCards, gbc);
 
-        // -----------------------------------------------------
-        // GESTÃO FINANCEIRA
-        // -----------------------------------------------------
-
+        // ---- Gestao financeira ----
         gbc.gridy++;
-        gbc.insets = new Insets(27, 0, 0, 0);
-
-        JLabel financeiro = new JLabel("Gest\u00e3o Financeira");
-        financeiro.setFont(poppinsSemibold(25));
-        financeiro.setForeground(BLACK);
-        dashboard.add(financeiro, gbc);
+        gbc.insets = new Insets(32, 0, 0, 0);
+        dashboard.add(sectionTitle("Gest\u00e3o Financeira"), gbc);
 
         gbc.gridy++;
         gbc.insets = new Insets(16, 0, 0, 0);
@@ -573,10 +602,52 @@ public class CoStockDashboard extends JFrame {
 
         JScrollPane scroll = new JScrollPane(dashboard);
         scroll.setBorder(null);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.getHorizontalScrollBar().setUnitIncrement(16);
+        scroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        scroll.getVerticalScrollBar().setUnitIncrement(20);
 
         return scroll;
+    }
+
+    /** Painel que acompanha a largura da janela (cards encolhem em vez de gerar rolagem lateral). */
+    private static class ScrollableDashboardPanel extends JPanel implements Scrollable {
+
+        ScrollableDashboardPanel(LayoutManager layout) {
+            super(layout);
+        }
+
+        @Override
+        public Dimension getPreferredScrollableViewportSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public int getScrollableUnitIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return 20;
+        }
+
+        @Override
+        public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) {
+            return Math.max(40, visibleRect.height - 40);
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportWidth() {
+            return true;
+        }
+
+        @Override
+        public boolean getScrollableTracksViewportHeight() {
+            Container parent = getParent();
+            return parent instanceof JViewport
+                    && parent.getHeight() > getPreferredSize().height;
+        }
+    }
+
+    private JLabel sectionTitle(String text) {
+        JLabel label = new JLabel(text);
+        label.setFont(poppinsSemibold(32));
+        label.setForeground(BLACK);
+        return label;
     }
 
     private JPanel createCardsPanel() {
@@ -586,10 +657,14 @@ public class CoStockDashboard extends JFrame {
     }
 
     // =========================================================
-    // CARD (somente visualização)
+    // CARD (somente visualizacao)
     // =========================================================
 
     private static class DashboardCard extends JPanel {
+
+        private static final int CORNER = 16;
+        private static final int FOOTER_HEIGHT = 46;
+        private static final int PAD = 24;
 
         private final Color background;
         private final Color footerColor;
@@ -613,8 +688,10 @@ public class CoStockDashboard extends JFrame {
             this.icon = icon;
 
             setOpaque(false);
-            setPreferredSize(new Dimension(300, 145));
-            setMinimumSize(new Dimension(200, 130));
+            // Largura preferida baixa de proposito: o GridLayout estica os cards.
+            // (Se a soma passar da largura da janela, o GridBagLayout achata a altura.)
+            setPreferredSize(new Dimension(240, 190));
+            setMinimumSize(new Dimension(220, 190));
         }
 
         @Override
@@ -622,74 +699,91 @@ public class CoStockDashboard extends JFrame {
 
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
 
             int w = getWidth();
             int h = getHeight();
-            int radius = 15;
 
-            // CARD
+            RoundRectangle2D cardShape = new RoundRectangle2D.Double(0, 0, w, h, CORNER * 2, CORNER * 2);
+
+            // Fundo do card
             g.setColor(background);
-            g.fillRoundRect(0, 0, w, h, radius, radius);
+            g.fill(cardShape);
 
-            // TÍTULO
+            // Icone (marca d'agua, desenhado ANTES do texto)
+            int iconSize = Math.min(64, Math.max(48, w / 5));
+            paintCardIcon(g, icon, w - iconSize - 22, 18, iconSize);
+
+            // Titulo
             g.setColor(WHITE);
-            g.setFont(poppinsMedium(15));
-            g.drawString(title, 16, 30);
+            g.setFont(poppinsMedium(21));
+            g.drawString(title, PAD, 42);
 
-            // UNIDADE + VALOR (mesma linha, como no protótipo)
-            g.setFont(poppins(11));
-            FontMetrics unitFm = g.getFontMetrics();
-            int unitWidth = unitFm.stringWidth(unit);
-            g.drawString(unit, 16, 78);
+            // Unidade + valor na mesma linha
+            int contentBottom = h - FOOTER_HEIGHT;
+            int baseline = contentBottom - 30;
 
-            g.setFont(poppinsSemibold(28));
-            g.drawString(value, 16 + unitWidth + 4, 78);
+            Font unitFont = poppinsMedium(19);
+            Font valueFont = poppinsSemibold(46);
+            int maxWidth = w - PAD * 2;
 
-            // ÍCONE (marca d'água no canto superior direito)
-            int iconSize = Math.min(62, Math.max(45, w / 6));
-            int iconX = w - iconSize - 22;
-            int iconY = 19;
+            for (float size = 46f; size >= 30f; size -= 1f) {
+                valueFont = poppinsSemibold(size);
+                int total = g.getFontMetrics(unitFont).stringWidth(unit) + 6
+                        + g.getFontMetrics(valueFont).stringWidth(value);
+                if (total <= maxWidth) {
+                    break;
+                }
+            }
 
-            paintCardIcon(g, icon, iconX, iconY, iconSize);
+            FontRenderContext frc = g.getFontRenderContext();
+            double valueH = new TextLayout("0", valueFont, frc).getBounds().getHeight();
+            double unitH = new TextLayout("R", unitFont, frc).getBounds().getHeight();
 
-            // FOOTER
-            int footerHeight = 31;
+            int unitWidth = g.getFontMetrics(unitFont).stringWidth(unit);
 
-            Path2D footerShape = new Path2D.Double();
-            footerShape.moveTo(0, h - footerHeight);
-            footerShape.lineTo(w, h - footerHeight);
-            footerShape.lineTo(w, h - radius);
-            footerShape.quadTo(w, h, w - radius, h);
-            footerShape.lineTo(radius, h);
-            footerShape.quadTo(0, h, 0, h - radius);
-            footerShape.closePath();
+            g.setFont(unitFont);
+            g.drawString(unit, PAD, (int) Math.round(baseline - (valueH - unitH)));
 
+            g.setFont(valueFont);
+            g.drawString(value, PAD + unitWidth + 6, baseline);
+
+            // Rodape (mesma curvatura do card, via intersecao)
+            Area footerArea = new Area(cardShape);
+            footerArea.intersect(new Area(new Rectangle2D.Double(0, h - FOOTER_HEIGHT, w, FOOTER_HEIGHT)));
             g.setColor(footerColor);
-            g.fill(footerShape);
+            g.fill(footerArea);
 
+            // Texto do rodape: reduz a fonte antes de cortar com "..."
             g.setColor(WHITE);
-            g.setFont(poppinsMedium(8.5f));
+            Font footerFont = poppinsMedium(14.5f);
+            for (float size = 14.5f; size >= 11f; size -= 0.5f) {
+                footerFont = poppinsMedium(size);
+                if (g.getFontMetrics(footerFont).stringWidth(footer) <= w - 24) {
+                    break;
+                }
+            }
+            g.setFont(footerFont);
+
             FontMetrics fm = g.getFontMetrics();
-
-            String footerText = fitText(g, footer, w - 18);
-            int textWidth = fm.stringWidth(footerText);
-            int x = Math.max(9, (w - textWidth) / 2);
-
-            g.drawString(footerText, x, h - 11);
+            String footerText = fitText(fm, footer, w - 24);
+            int textX = (w - fm.stringWidth(footerText)) / 2;
+            int textY = h - FOOTER_HEIGHT + (FOOTER_HEIGHT - fm.getHeight()) / 2 + fm.getAscent();
+            g.drawString(footerText, textX, textY);
 
             g.dispose();
         }
 
-        private static String fitText(Graphics2D g, String text, int maxWidth) {
+        private static String fitText(FontMetrics fm, String text, int maxWidth) {
 
-            if (g.getFontMetrics().stringWidth(text) <= maxWidth) {
+            if (fm.stringWidth(text) <= maxWidth) {
                 return text;
             }
 
             String result = text;
 
-            while (result.length() > 3
-                    && g.getFontMetrics().stringWidth(result + "...") > maxWidth) {
+            while (result.length() > 3 && fm.stringWidth(result + "...") > maxWidth) {
                 result = result.substring(0, result.length() - 1);
             }
 
@@ -698,7 +792,7 @@ public class CoStockDashboard extends JFrame {
     }
 
     // =========================================================
-    // ÍCONES DOS CARDS
+    // ICONES DOS CARDS (marca d'agua escura, como no prototipo)
     // =========================================================
 
     private enum CardIcon {
@@ -709,69 +803,114 @@ public class CoStockDashboard extends JFrame {
 
         Graphics2D copy = (Graphics2D) g.create();
 
-        // ícone em marca d'água clara sobre o card (branco translúcido)
-        copy.setColor(new Color(255, 255, 255, 45));
-
-        copy.setStroke(new BasicStroke(
-                Math.max(4f, size / 14f),
-                BasicStroke.CAP_ROUND,
-                BasicStroke.JOIN_ROUND
-        ));
-
         double scale = size / 100.0;
         copy.translate(x, y);
         copy.scale(scale, scale);
 
         switch (icon) {
-            case CART -> drawCart(copy);
-            case BARS -> drawBars(copy);
-            case CLOSE -> drawClose(copy);
-            case COINS -> drawCoins(copy);
+            case CART:
+                drawCart(copy);
+                break;
+            case BARS:
+                drawBars(copy);
+                break;
+            case CLOSE:
+                drawClose(copy);
+                break;
+            case COINS:
+                drawCoins(copy);
+                break;
+            default:
+                break;
         }
 
         copy.dispose();
     }
 
+    private static final Color ICON_DARK = new Color(0, 0, 0, 42);
+    private static final Color ICON_LIGHT = new Color(255, 255, 255, 70);
+
     private static void drawCart(Graphics2D g) {
-        g.drawLine(4, 12, 25, 12);
-        g.drawLine(25, 12, 34, 51);
-        g.drawLine(34, 51, 90, 51);
-        g.drawLine(90, 51, 103, 20);
-        g.drawLine(22, 20, 103, 20);
-        g.fillOval(37, 58, 12, 12);
-        g.fillOval(78, 58, 12, 12);
+
+        Stroke stroke = new BasicStroke(8f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+
+        Path2D basket = new Path2D.Double();
+        basket.moveTo(28, 20);
+        basket.lineTo(100, 20);
+        basket.lineTo(89, 54);
+        basket.lineTo(36, 54);
+        basket.closePath();
+
+        Area area = new Area(basket);
+        area.add(new Area(stroke.createStrokedShape(new Line2D.Double(4, 8, 22, 8))));
+        area.add(new Area(stroke.createStrokedShape(new Line2D.Double(22, 8, 36, 54))));
+        area.add(new Area(new Ellipse2D.Double(38, 63, 15, 15)));
+        area.add(new Area(new Ellipse2D.Double(78, 63, 15, 15)));
+
+        g.setColor(ICON_DARK);
+        g.fill(area);
     }
 
     private static void drawBars(Graphics2D g) {
-        g.fillRoundRect(4, 34, 20, 56, 4, 4);
-        g.fillRoundRect(40, 19, 20, 71, 4, 4);
-        g.fillRoundRect(76, 4, 20, 86, 4, 4);
+        g.setColor(ICON_DARK);
+        g.fillRoundRect(2, 38, 26, 62, 5, 5);
+        g.fillRoundRect(37, 22, 26, 78, 5, 5);
+        g.fillRoundRect(72, 0, 26, 100, 5, 5);
     }
 
     private static void drawClose(Graphics2D g) {
-        g.setStroke(new BasicStroke(9, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-        g.drawLine(25, 25, 75, 75);
-        g.drawLine(75, 25, 25, 75);
+
+        g.setColor(ICON_DARK);
+        g.fill(new Ellipse2D.Double(0, 0, 100, 100));
+
+        Stroke stroke = new BasicStroke(11f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+        Area cross = new Area(stroke.createStrokedShape(new Line2D.Double(30, 30, 70, 70)));
+        cross.add(new Area(stroke.createStrokedShape(new Line2D.Double(70, 30, 30, 70))));
+
+        g.setColor(ICON_LIGHT);
+        g.fill(cross);
     }
 
     private static void drawCoins(Graphics2D g) {
-        g.setStroke(new BasicStroke(5));
-        g.drawOval(12, 8, 40, 19);
-        g.drawOval(12, 19, 40, 19);
-        g.drawOval(12, 30, 40, 19);
-        g.drawOval(46, 34, 40, 19);
-        g.drawOval(46, 45, 40, 19);
-        g.drawOval(46, 56, 40, 19);
+
+        Area coins = new Area();
+
+        for (int i = 0; i < 4; i++) {
+            coins.add(new Area(new Ellipse2D.Double(4, 4 + i * 15, 46, 24)));
+        }
+
+        for (int i = 0; i < 3; i++) {
+            coins.add(new Area(new Ellipse2D.Double(52, 38 + i * 15, 46, 24)));
+        }
+
+        g.setColor(ICON_DARK);
+        g.fill(coins);
     }
 
     // =========================================================
-    // LOGO
+    // LOGO (imagem anexada ao projeto)
     // =========================================================
 
     private static class LogoView extends JPanel {
 
+        private final BufferedImage image;
+        private final int drawWidth;
+
         LogoView() {
+
             setOpaque(false);
+
+            image = loadImage("/images/logo.png");
+
+            if (image != null) {
+                drawWidth = Math.round(image.getWidth() * (float) LOGO_HEIGHT / image.getHeight());
+            } else {
+                drawWidth = 300;
+            }
+
+            setPreferredSize(new Dimension(drawWidth, LOGO_HEIGHT));
+            setMinimumSize(new Dimension(drawWidth, LOGO_HEIGHT));
+            setToolTipText("CoStock - Sistema Inteligente de Gest\u00e3o");
         }
 
         @Override
@@ -779,37 +918,118 @@ public class CoStockDashboard extends JFrame {
 
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
 
-            // Círculo de fundo (engrenagem estilizada)
-            g.setColor(ORANGE);
-            g.fillOval(4, 4, 38, 38);
-
-            g.setStroke(new BasicStroke(3f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            for (int i = 0; i < 8; i++) {
-                double angle = Math.toRadians(i * 45);
-                int cx = 23, cy = 23, r1 = 19, r2 = 24;
-                int x1 = cx + (int) (Math.cos(angle) * r1);
-                int y1 = cy + (int) (Math.sin(angle) * r1);
-                int x2 = cx + (int) (Math.cos(angle) * r2);
-                int y2 = cy + (int) (Math.sin(angle) * r2);
-                g.drawLine(x1, y1, x2, y2);
+            if (image != null) {
+                g.drawImage(image, 0, 0, drawWidth, LOGO_HEIGHT, null);
+            } else {
+                // Fallback caso a imagem nao seja encontrada
+                g.setColor(ORANGE);
+                g.setFont(poppinsSemibold(34));
+                g.drawString("CoStock", 4, 40);
+                g.setColor(TEXT_GRAY);
+                g.setFont(poppinsMedium(14));
+                g.drawString("Sistema Inteligente de Gest\u00e3o", 4, 62);
             }
-
-            // Lâmpada (ideia / inteligência do sistema)
-            g.setColor(WHITE);
-            g.fillOval(13, 10, 20, 20);
-
-            g.setColor(ORANGE);
-            g.fillRoundRect(18, 26, 10, 4, 2, 2);
-            g.fillRoundRect(19, 31, 8, 4, 2, 2);
 
             g.dispose();
         }
     }
 
     // =========================================================
-    // USUÁRIO
+    // CONTA / LOGIN
     // =========================================================
+
+    private class UserAccountButton extends JPanel {
+
+        private boolean hover;
+
+        UserAccountButton() {
+
+            setOpaque(false);
+            setLayout(new FlowLayout(FlowLayout.LEFT, 12, 0));
+            setBorder(new EmptyBorder(10, 8, 10, 8));
+            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+            setToolTipText("Abrir menu da conta");
+
+            UserIcon userIcon = new UserIcon();
+            userIcon.setPreferredSize(new Dimension(44, 44));
+            add(userIcon);
+
+            JPanel userText = new JPanel();
+            userText.setOpaque(false);
+            userText.setLayout(new BoxLayout(userText, BoxLayout.Y_AXIS));
+
+            JLabel name = new JLabel("Isabel Lopes");
+            name.setFont(poppinsSemibold(17));
+            name.setForeground(BLACK);
+
+            JLabel role = new JLabel("Operador de Caixa");
+            role.setFont(poppins(14));
+            role.setForeground(TEXT_GRAY);
+
+            userText.add(name);
+            userText.add(role);
+            add(userText);
+
+            ChevronIcon chevron = new ChevronIcon();
+            chevron.setPreferredSize(new Dimension(16, 44));
+            add(chevron);
+
+            JPopupMenu menu = new JPopupMenu();
+            menu.add(buildMenuItem("Meu perfil", e -> showComingSoon("Meu perfil")));
+            menu.add(buildMenuItem("Configura\u00e7\u00f5es", e -> showComingSoon("Configura\u00e7\u00f5es")));
+            menu.addSeparator();
+            menu.add(buildMenuItem("Sair da conta", e -> confirmLogout()));
+
+            addMouseListener(new MouseAdapter() {
+                @Override
+                public void mouseClicked(MouseEvent e) {
+                    menu.show(
+                            UserAccountButton.this,
+                            getWidth() - menu.getPreferredSize().width,
+                            getHeight() + 2
+                    );
+                }
+
+                @Override
+                public void mouseEntered(MouseEvent e) {
+                    hover = true;
+                    repaint();
+                }
+
+                @Override
+                public void mouseExited(MouseEvent e) {
+                    hover = false;
+                    repaint();
+                }
+            });
+        }
+
+        private JMenuItem buildMenuItem(String text, ActionListener listener) {
+            JMenuItem item = new JMenuItem(text);
+            item.setFont(poppinsMedium(16));
+            item.setPreferredSize(new Dimension(220, 42));
+            item.addActionListener(listener);
+            return item;
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+
+            if (hover) {
+                Graphics2D g = (Graphics2D) graphics.create();
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g.setColor(HOVER_GRAY);
+                g.fillRoundRect(0, 0, getWidth(), getHeight(), 18, 18);
+                g.dispose();
+            }
+
+            super.paintComponent(graphics);
+        }
+    }
 
     private static class UserIcon extends JPanel {
 
@@ -823,9 +1043,36 @@ public class CoStockDashboard extends JFrame {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+            int w = getWidth();
+            int h = getHeight();
+
             g.setColor(ORANGE);
-            g.fillOval(10, 2, 13, 13);
-            g.fillRoundRect(4, 16, 25, 13, 10, 10);
+            g.fillOval(w / 2 - 9, 5, 18, 18);
+            g.fillRoundRect(w / 2 - 17, 26, 34, 15, 15, 15);
+
+            g.dispose();
+        }
+    }
+
+    private static class ChevronIcon extends JPanel {
+
+        ChevronIcon() {
+            setOpaque(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int cx = getWidth() / 2;
+            int cy = getHeight() / 2;
+
+            g.setColor(TEXT_GRAY);
+            g.setStroke(new BasicStroke(2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.drawLine(cx - 5, cy - 2, cx, cy + 3);
+            g.drawLine(cx, cy + 3, cx + 5, cy - 2);
 
             g.dispose();
         }
@@ -839,42 +1086,85 @@ public class CoStockDashboard extends JFrame {
 
         private static final String PLACEHOLDER = "Pesquisar...";
 
-        SearchField() {
+        private boolean focused;
+
+        SearchField(java.util.function.Consumer<String> onSearch) {
 
             setOpaque(false);
             setLayout(new BorderLayout());
-            setBorder(new RoundedBorder(ORANGE, 1, 20));
+            setBorder(new EmptyBorder(0, 0, 0, 20));
+            setPreferredSize(new Dimension(460, 50));
+            setMinimumSize(new Dimension(280, 50));
 
             SearchIcon icon = new SearchIcon();
-            icon.setPreferredSize(new Dimension(37, 35));
+            icon.setPreferredSize(new Dimension(56, 50));
             add(icon, BorderLayout.WEST);
 
-            JTextField field = new JTextField();
-            field.setText(PLACEHOLDER);
-            field.setFont(poppins(11));
-            field.setForeground(TEXT_GRAY);
+            JTextField field = new JTextField() {
+                @Override
+                protected void paintComponent(Graphics graphics) {
+                    super.paintComponent(graphics);
+
+                    if (getText().isEmpty()) {
+                        Graphics2D g = (Graphics2D) graphics.create();
+                        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+                        g.setColor(PLACEHOLDER_GRAY);
+                        g.setFont(getFont());
+                        FontMetrics fm = g.getFontMetrics();
+                        Insets in = getInsets();
+                        g.drawString(PLACEHOLDER, in.left,
+                                (getHeight() - fm.getHeight()) / 2 + fm.getAscent());
+                        g.dispose();
+                    }
+                }
+            };
+
+            field.setFont(poppins(17));
+            field.setForeground(BLACK);
+            field.setCaretColor(ORANGE);
             field.setOpaque(false);
             field.setBorder(null);
+            field.setToolTipText("Digite o nome de uma se\u00e7\u00e3o e pressione Enter");
 
             field.addFocusListener(new FocusAdapter() {
                 @Override
                 public void focusGained(FocusEvent e) {
-                    if (field.getText().equals(PLACEHOLDER)) {
-                        field.setText("");
-                        field.setForeground(BLACK);
-                    }
+                    focused = true;
+                    repaint();
                 }
 
                 @Override
                 public void focusLost(FocusEvent e) {
-                    if (field.getText().isBlank()) {
-                        field.setText(PLACEHOLDER);
-                        field.setForeground(TEXT_GRAY);
-                    }
+                    focused = false;
+                    repaint();
                 }
             });
 
+            field.addActionListener(e -> onSearch.accept(field.getText()));
+
             add(field, BorderLayout.CENTER);
+        }
+
+        @Override
+        protected void paintComponent(Graphics graphics) {
+
+            Graphics2D g = (Graphics2D) graphics.create();
+            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            int w = getWidth();
+            int h = getHeight();
+            float stroke = focused ? 3f : 2f;
+
+            g.setColor(SEARCH_BG);
+            g.fillRoundRect(0, 0, w, h, h, h);
+
+            g.setColor(ORANGE);
+            g.setStroke(new BasicStroke(stroke));
+            g.drawRoundRect(1, 1, w - 3, h - 3, h, h);
+
+            g.dispose();
+            super.paintComponent(graphics);
         }
     }
 
@@ -890,58 +1180,50 @@ public class CoStockDashboard extends JFrame {
             Graphics2D g = (Graphics2D) graphics.create();
             g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
+            int cx = getWidth() / 2 + 2;
+            int cy = getHeight() / 2;
+
             g.setColor(TEXT_GRAY);
-            g.setStroke(new BasicStroke(2));
-            g.drawOval(9, 8, 12, 12);
-            g.drawLine(19, 19, 25, 25);
+            g.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g.drawOval(cx - 11, cy - 11, 17, 17);
+            g.drawLine(cx + 4, cy + 4, cx + 10, cy + 10);
 
             g.dispose();
         }
     }
 
     // =========================================================
-    // COMPONENTES AUXILIARES
+    // RECURSOS (imagem e fontes)
     // =========================================================
 
-    private static class RoundedBorder implements javax.swing.border.Border {
+    private static BufferedImage loadImage(String resourcePath) {
 
-        private final Color color;
-        private final int thickness;
-        private final int radius;
-
-        RoundedBorder(Color color, int thickness, int radius) {
-            this.color = color;
-            this.thickness = thickness;
-            this.radius = radius;
+        try (InputStream stream = CoStockDashboard.class.getResourceAsStream(resourcePath)) {
+            if (stream != null) {
+                return ImageIO.read(stream);
+            }
+        } catch (IOException ignored) {
         }
 
-        @Override
-        public Insets getBorderInsets(Component c) {
-            return new Insets(3, 5, 3, 5);
+        // Plano B: procura a pasta resources/ ao lado de onde o programa foi iniciado
+        String[] candidates = {
+                "resources" + resourcePath,
+                "src" + resourcePath,
+                resourcePath.substring(1)
+        };
+
+        for (String candidate : candidates) {
+            try {
+                File file = new File(candidate);
+                if (file.exists()) {
+                    return ImageIO.read(file);
+                }
+            } catch (IOException ignored) {
+            }
         }
 
-        @Override
-        public boolean isBorderOpaque() {
-            return false;
-        }
-
-        @Override
-        public void paintBorder(Component c, Graphics graphics, int x, int y, int width, int height) {
-
-            Graphics2D g = (Graphics2D) graphics.create();
-            g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g.setColor(color);
-            g.setStroke(new BasicStroke(thickness));
-            g.drawRoundRect(x + 1, y + 1, width - 2, height - 2, radius, radius);
-
-            g.dispose();
-        }
+        return null;
     }
-
-    // =========================================================
-    // FONTES
-    // =========================================================
 
     private static void loadFonts() {
         POPPINS = loadFont("/fonts/Poppins-Regular.ttf", Font.PLAIN);
@@ -951,20 +1233,21 @@ public class CoStockDashboard extends JFrame {
 
     private static Font loadFont(String path, int style) {
 
-        try {
-            InputStream stream = CoStockDashboard.class.getResourceAsStream(path);
-
+        try (InputStream stream = CoStockDashboard.class.getResourceAsStream(path)) {
             if (stream != null) {
-                Font font = Font.createFont(Font.TRUETYPE_FONT, stream);
-                return font.deriveFont(style, 14f);
+                return Font.createFont(Font.TRUETYPE_FONT, stream).deriveFont(style, 14f);
             }
-
         } catch (Exception ignored) {
         }
 
-        // Sem os arquivos Poppins-*.ttf no classpath, cai para a melhor
-        // fonte do sistema disponível (evita fontes decorativas estranhas
-        // que o "SansSerif" genérico pode mapear em algumas máquinas).
+        try {
+            File file = new File("resources" + path);
+            if (file.exists()) {
+                return Font.createFont(Font.TRUETYPE_FONT, file).deriveFont(style, 14f);
+            }
+        } catch (Exception ignored) {
+        }
+
         return new Font(fallbackFamily(), style, 14);
     }
 
@@ -1008,6 +1291,10 @@ public class CoStockDashboard extends JFrame {
     // =========================================================
 
     public static void main(String[] args) {
+
+        // Texto suavizado (mais legivel) em todo o Swing
+        System.setProperty("awt.useSystemAAFontSettings", "on");
+        System.setProperty("swing.aatext", "true");
 
         SwingUtilities.invokeLater(() -> {
 

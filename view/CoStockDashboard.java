@@ -900,7 +900,7 @@ public class CoStockDashboard extends JFrame {
 
             setOpaque(false);
 
-            image = loadImage("/images/logo.png");
+            image = loadImage("/resources/images/logo.png");
 
             if (image != null) {
                 drawWidth = Math.round(image.getWidth() * (float) LOGO_HEIGHT / image.getHeight());
@@ -1226,9 +1226,9 @@ public class CoStockDashboard extends JFrame {
     }
 
     private static void loadFonts() {
-        POPPINS = loadFont("/fonts/Poppins-Regular.ttf", Font.PLAIN);
-        POPPINS_MEDIUM = loadFont("/fonts/Poppins-Medium.ttf", Font.PLAIN);
-        POPPINS_SEMIBOLD = loadFont("/fonts/Poppins-SemiBold.ttf", Font.BOLD);
+        POPPINS = loadFont("/resources/fonts/Poppins-Regular.ttf", Font.PLAIN);
+        POPPINS_MEDIUM = loadFont("/resources/fonts/Poppins-Medium.ttf", Font.PLAIN);
+        POPPINS_SEMIBOLD = loadFont("/resources/fonts/Poppins-SemiBold.ttf", Font.BOLD);
     }
 
     private static Font loadFont(String path, int style) {

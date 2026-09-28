@@ -1,0 +1,10 @@
+package model;
+
+public enum Permissao {
+    GERENCIAR_USUARIOS,
+    GERENCIAR_PRODUTOS,
+    REALIZAR_VENDAS,
+    GERENCIAR_ESTOQUE,
+    GERENCIAR_CAIXA,
+    CONSULTAR_RELATORIOS
+}

@@ -1,8 +1,8 @@
--- MySQL dump 10.13  Distrib 8.0.46, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.44, for Win64 (x86_64)
 --
 -- Host: 127.0.0.1    Database: gestao_vendas
 -- ------------------------------------------------------
--- Server version	8.0.46
+-- Server version	8.0.44
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -64,6 +64,21 @@ CREATE TABLE `cargos` (
   `id_cargo` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(50) NOT NULL,
   PRIMARY KEY (`id_cargo`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `categorias`
+--
+
+DROP TABLE IF EXISTS `categorias`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `categorias` (
+  `id_categoria` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(100) NOT NULL,
+  `descricao` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_categoria`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -283,21 +298,17 @@ DROP TABLE IF EXISTS `produtos`;
 CREATE TABLE `produtos` (
   `id_produto` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(150) NOT NULL,
-  `descricao` text,
+  `descricao` varchar(255) DEFAULT NULL,
   `codigo_barras` varchar(50) DEFAULT NULL,
-  `categoria` varchar(100) DEFAULT NULL,
-  `unidade_medida` varchar(20) DEFAULT NULL,
   `preco_custo` decimal(10,2) NOT NULL,
   `preco_venda` decimal(10,2) NOT NULL,
-  `estoque_minimo` int DEFAULT '0',
-  `validade` date DEFAULT NULL,
-  `ativo` tinyint(1) DEFAULT '1',
-  `id_fornecedor` int DEFAULT NULL,
-  `lote` varchar(50) DEFAULT NULL,
+  `estoque_minimo` int NOT NULL DEFAULT '0',
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
+  `id_categoria` int DEFAULT NULL,
   PRIMARY KEY (`id_produto`),
   UNIQUE KEY `codigo_barras` (`codigo_barras`),
-  KEY `id_fornecedor` (`id_fornecedor`),
-  CONSTRAINT `produtos_ibfk_1` FOREIGN KEY (`id_fornecedor`) REFERENCES `fornecedores` (`id_fornecedor`)
+  KEY `fk_produto_categoria` (`id_categoria`),
+  CONSTRAINT `fk_produto_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id_categoria`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -397,4 +408,4 @@ CREATE TABLE `vendas` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-30 12:01:47
+-- Dump completed on 2026-09-30 18:41:14

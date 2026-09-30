@@ -37,6 +37,23 @@ CREATE TABLE `caixas` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `cargo_permissao`
+--
+
+DROP TABLE IF EXISTS `cargo_permissao`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `cargo_permissao` (
+  `id_cargo` int NOT NULL,
+  `id_permissao` int NOT NULL,
+  PRIMARY KEY (`id_cargo`,`id_permissao`),
+  KEY `fk_cargo_permissao_permissao` (`id_permissao`),
+  CONSTRAINT `fk_cargo_permissao_cargo` FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`),
+  CONSTRAINT `fk_cargo_permissao_permissao` FOREIGN KEY (`id_permissao`) REFERENCES `permissoes` (`id_permissao`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `cargos`
 --
 
@@ -243,6 +260,20 @@ CREATE TABLE `perdas` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `permissoes`
+--
+
+DROP TABLE IF EXISTS `permissoes`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `permissoes` (
+  `id_permissao` int NOT NULL AUTO_INCREMENT,
+  `nome` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_permissao`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `produtos`
 --
 
@@ -317,13 +348,16 @@ DROP TABLE IF EXISTS `usuarios`;
 CREATE TABLE `usuarios` (
   `id_usuario` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) NOT NULL,
+  `telefone` varchar(20) DEFAULT NULL,
   `email` varchar(100) NOT NULL,
+  `endereco` varchar(255) DEFAULT NULL,
   `senha` varchar(255) NOT NULL,
   `id_cargo` int NOT NULL,
+  `ativo` tinyint(1) NOT NULL DEFAULT '1',
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `email` (`email`),
-  KEY `id_cargo` (`id_cargo`),
-  CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`)
+  KEY `fk_usuario_cargo` (`id_cargo`),
+  CONSTRAINT `fk_usuario_cargo` FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -363,4 +397,4 @@ CREATE TABLE `vendas` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-30  8:28:11
+-- Dump completed on 2026-09-30 12:01:47

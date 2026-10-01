@@ -11,3 +11,6 @@
 # Arquivos temporários
 *.log
 .DS_Store
+
+# Configuração local do banco
+dao/Conexao.java

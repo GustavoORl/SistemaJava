@@ -1,13 +1,14 @@
     package dao;
 
-    import model.Cargo;
-    import model.Usuario;
     import java.sql.Connection;
     import java.sql.PreparedStatement;
     import java.sql.ResultSet;
     import java.sql.SQLException;
     import java.util.ArrayList;
     import java.util.List;
+    import javax.swing.JOptionPane;
+    import model.Cargo;
+    import model.Usuario;
 
     public class UsuarioDAO {
 
@@ -157,4 +158,57 @@
                     e.printStackTrace();
             }
         }
+
+    
+public Usuario autenticar(String email, String senha) {
+
+    String sql = "SELECT u.*, c.nome AS nome_cargo "
+               + "FROM usuarios u "
+               + "INNER JOIN cargos c "
+               + "ON u.id_cargo = c.id_cargo "
+               + "WHERE u.email = ? "
+               + "AND u.senha = ? "
+               + "AND u.ativo = TRUE";
+
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setString(1, email);
+        stmt.setString(2, senha);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            if (rs.next()) {
+
+                Usuario usuario = new Usuario();
+
+                usuario.setId(rs.getInt("id_usuario"));
+                usuario.setNome(rs.getString("nome"));
+                usuario.setTelefone(rs.getString("telefone"));
+                usuario.setEmail(rs.getString("email"));
+                usuario.setEndereco(rs.getString("endereco"));
+                usuario.setSenha(rs.getString("senha"));
+                usuario.setAtivo(rs.getBoolean("ativo"));
+
+                Cargo cargo = new Cargo();
+
+                cargo.setIdCargo(rs.getInt("id_cargo"));
+                cargo.setNome(rs.getString("nome_cargo"));
+
+                usuario.setCargo(cargo);
+
+                return usuario;
+            }
+        }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(
+            null,
+            "Erro ao conectar ao banco de dados."
+        );
+    }
+
+    return null;
+}
     }

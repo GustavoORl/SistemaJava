@@ -10,21 +10,38 @@ import model.Categoria;
 
 public class CategoriaDAO {
 
-    public void cadastrar(Categoria categoria){
-        String sql = "INSERT INTO categorias (nome, descricao) VALUES (?, ?)";
+    public int cadastrar(Categoria categoria) {
 
-        try (Connection conn = Conexao.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(sql)){
+    String sql = "INSERT INTO categorias (nome, descricao) VALUES (?, ?)";
 
-                    stmt.setString(1, categoria.getNome());
-                    stmt.setString(2, categoria.getDescricao());
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(
+                 sql,
+                 PreparedStatement.RETURN_GENERATED_KEYS)) {
 
-                    stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        stmt.setString(1, categoria.getNome());
+        stmt.setString(2, categoria.getDescricao());
+
+        stmt.executeUpdate();
+
+        try (ResultSet rs = stmt.getGeneratedKeys()) {
+
+            if (rs.next()) {
+
+                int idGerado = rs.getInt(1);
+
+                categoria.setId(idGerado);
+
+                return idGerado;
+            }
         }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
 
+    return -1;
+}
     public List<Categoria> listar(){
         List<Categoria> categorias = new ArrayList<>();
 

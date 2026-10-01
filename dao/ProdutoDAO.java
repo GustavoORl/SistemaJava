@@ -6,8 +6,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
-import model.Produto;
 import model.Categoria;
+import model.Produto;
 
 public class ProdutoDAO {
     public void cadastrar(Produto produto) {
@@ -76,4 +76,86 @@ public class ProdutoDAO {
 
             return produtos;
         }
+
+public Produto buscarPorCodigoOuNome(String busca) {
+
+    String sql = "SELECT * FROM produtos "
+            + "WHERE ativo = TRUE "
+            + "AND (codigo_barras = ? OR nome LIKE ?) "
+            + "LIMIT 1";
+
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setString(1, busca);
+        stmt.setString(2, "%" + busca + "%");
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            if (rs.next()) {
+
+                Produto p = new Produto();
+
+                p.setIdProduto(rs.getInt("id_produto"));
+                p.setNome(rs.getString("nome"));
+                p.setDescricao(rs.getString("descricao"));
+                p.setCodigoBarras(rs.getString("codigo_barras"));
+
+                p.setPrecoCusto(rs.getBigDecimal("preco_custo"));
+                p.setPrecoVenda(rs.getBigDecimal("preco_venda"));
+
+                p.setEstoqueMinimo(rs.getInt("estoque_minimo"));
+                p.setAtivo(rs.getBoolean("ativo"));
+
+                return p;
+            }
+
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Erro ao buscar produto!");
+        e.printStackTrace();
+    }
+
+    return null;
+}
+
+public Produto buscarPorNumero(int numero) {
+
+    String sql = "SELECT * FROM produtos WHERE id_produto = ?";
+
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setInt(1, numero);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            if (rs.next()) {
+
+                Produto p = new Produto();
+
+                p.setIdProduto(rs.getInt("id_produto"));
+                p.setNome(rs.getString("nome"));
+                p.setDescricao(rs.getString("descricao"));
+                p.setCodigoBarras(rs.getString("codigo_barras"));
+
+                p.setPrecoCusto(rs.getBigDecimal("preco_custo"));
+                p.setPrecoVenda(rs.getBigDecimal("preco_venda"));
+
+                p.setEstoqueMinimo(rs.getInt("estoque_minimo"));
+
+                p.setAtivo(rs.getBoolean("ativo"));
+
+                return p;
+            }
+        }
+
+    } catch (SQLException e) {
+        System.out.println("Erro ao buscar produto!");
+        e.printStackTrace();
+    }
+
+    return null;
+}
 }

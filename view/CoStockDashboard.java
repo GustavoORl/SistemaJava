@@ -29,7 +29,7 @@ import java.util.List;
  *  - Navbar lateral: botoes de navegacao da plataforma (sem icones)
  *  - Cards: apenas visualizacao
  *
- * Recursos esperados no classpath (pasta resources/):
+ * Recursos esperados no classpath (pasta assets/):
  *  - /images/logo.png
  *  - /fonts/Poppins-Regular.ttf, Poppins-Medium.ttf, Poppins-SemiBold.ttf
  */
@@ -900,7 +900,7 @@ public class CoStockDashboard extends JFrame {
 
             setOpaque(false);
 
-            image = loadImage("/resources/images/logo.png");
+            image = loadImage("/assets/images/logo.png");
 
             if (image != null) {
                 drawWidth = Math.round(image.getWidth() * (float) LOGO_HEIGHT / image.getHeight());
@@ -1205,9 +1205,9 @@ public class CoStockDashboard extends JFrame {
         } catch (IOException ignored) {
         }
 
-        // Plano B: procura a pasta resources/ ao lado de onde o programa foi iniciado
+        // Plano B: procura a pasta assets/ ao lado de onde o programa foi iniciado
         String[] candidates = {
-                "resources" + resourcePath,
+                "assets" + resourcePath,
                 "src" + resourcePath,
                 resourcePath.substring(1)
         };
@@ -1226,9 +1226,9 @@ public class CoStockDashboard extends JFrame {
     }
 
     private static void loadFonts() {
-        POPPINS = loadFont("/resources/fonts/Poppins-Regular.ttf", Font.PLAIN);
-        POPPINS_MEDIUM = loadFont("/resources/fonts/Poppins-Medium.ttf", Font.PLAIN);
-        POPPINS_SEMIBOLD = loadFont("/resources/fonts/Poppins-SemiBold.ttf", Font.BOLD);
+        POPPINS = loadFont("/assets/fonts/Poppins-Regular.ttf", Font.PLAIN);
+        POPPINS_MEDIUM = loadFont("/assets/fonts/Poppins-Medium.ttf", Font.PLAIN);
+        POPPINS_SEMIBOLD = loadFont("/assets/fonts/Poppins-SemiBold.ttf", Font.BOLD);
     }
 
     private static Font loadFont(String path, int style) {
@@ -1241,7 +1241,7 @@ public class CoStockDashboard extends JFrame {
         }
 
         try {
-            File file = new File("resources" + path);
+            File file = new File("assets" + path);
             if (file.exists()) {
                 return Font.createFont(Font.TRUETYPE_FONT, file).deriveFont(style, 14f);
             }

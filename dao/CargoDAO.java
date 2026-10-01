@@ -1,29 +1,46 @@
 package dao;
 
-import model.Cargo;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import model.Cargo;
 
 public class CargoDAO {
     
-    public void cadastrar(Cargo cargo){
-        String sql = "INSERT INTO cargos (nome)"
-                   + "VALUES (?)";
+    public int cadastrar(Cargo cargo) {
 
-        try (Connection conn = Conexao.getConnection();
-                PreparedStatement stmt = conn.prepareStatement(sql)){
+    String sql = "INSERT INTO cargos (nome) VALUES (?)";
 
-                    stmt.setString(1, cargo.getNome());
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(
+                 sql,
+                 PreparedStatement.RETURN_GENERATED_KEYS)) {
 
-                    stmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
+        stmt.setString(1, cargo.getNome());
+
+        stmt.executeUpdate();
+
+        try (ResultSet rs = stmt.getGeneratedKeys()) {
+
+            if (rs.next()) {
+
+                int idGerado = rs.getInt(1);
+
+                cargo.setIdCargo(idGerado);
+
+                return idGerado;
+            }
         }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
+
+    return -1;
+}
 
     public List<Cargo> listar(){
         List<Cargo> cargos = new ArrayList<>();

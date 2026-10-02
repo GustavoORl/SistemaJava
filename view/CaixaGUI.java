@@ -2,8 +2,6 @@
 package view;
 
 import dao.ProdutoDAO;
-import model.Produto;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -13,13 +11,11 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -30,8 +26,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
-import javax.swing.SwingUtilities;
 import javax.swing.table.DefaultTableModel;
+import model.Caixa;
+import model.Produto;
+import model.Usuario;
 
 public class CaixaGUI extends JFrame {
 
@@ -63,25 +61,52 @@ public class CaixaGUI extends JFrame {
                     new Locale("pt", "BR")
             );
 
-    // =====================================================
-    // DAO E CARRINHO
-    // =====================================================
+// =====================================================
+// USUÁRIO E CAIXA
+// =====================================================
 
-    private final ProdutoDAO produtoDAO = new ProdutoDAO();
+private Usuario usuario;
+private Caixa caixa;
 
-    private final List<ItemCarrinho> carrinho =
-            new ArrayList<>();
+// =====================================================
+// DAO E CARRINHO
+// =====================================================
+
+private final ProdutoDAO produtoDAO = new ProdutoDAO();
+
+private final List<ItemCarrinho> carrinho =
+        new ArrayList<>();
 
     // =====================================================
     // CONSTRUTOR
     // =====================================================
 
-    public CaixaGUI() {
+public CaixaGUI(Usuario usuario, Caixa caixa) {
 
-        configurarJanela();
+    this.usuario = usuario;
+    this.caixa = caixa;
 
-        inicializarComponentes();
+    configurarJanela();
+
+    inicializarComponentes();
+
+    configurarTela();
+}
+
+
+// =====================================================
+// CONFIGURAÇÃO DA TELA
+// =====================================================
+
+private void configurarTela() {
+
+    if (usuario != null) {
+
+        lblOperador.setText(
+                "Operador: " + usuario.getNome()
+        );
     }
+}
 
     // =====================================================
     // CONFIGURAÇÃO DA JANELA
@@ -515,9 +540,9 @@ public class CaixaGUI extends JFrame {
         );
 
         btnSair = criarBotao(
-                "Sair",
-                new Color(70, 80, 90)
-        );
+    "Fechar caixa",
+    new Color(190, 60, 60)
+);
 
         // Eventos dos botões
         btnRemover.addActionListener(
@@ -533,7 +558,7 @@ public class CaixaGUI extends JFrame {
         );
 
         btnSair.addActionListener(
-                e -> sair()
+                e -> abrirFechamento()
         );
 
         painelBotoes.add(btnRemover);
@@ -981,17 +1006,28 @@ public class CaixaGUI extends JFrame {
         }
     }
 
-    // =====================================================
-    // MAIN PARA TESTAR A TELA
-    // =====================================================
 
-    public static void main(String[] args) {
+private void abrirFechamento() {
 
-        SwingUtilities.invokeLater(() -> {
+    if (caixa == null) {
 
-            CaixaGUI tela = new CaixaGUI();
+        JOptionPane.showMessageDialog(
+                this,
+                "Nenhum caixa está associado a esta sessão.",
+                "Erro",
+                JOptionPane.ERROR_MESSAGE
+        );
 
-            tela.setVisible(true);
-        });
+        return;
     }
+
+    CaixaFechamentoGUI tela =
+            new CaixaFechamentoGUI(caixa);
+
+    tela.setVisible(true);
+
+    dispose();
+}
+
+    
 }

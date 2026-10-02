@@ -2,10 +2,9 @@
 package view;
 
 import dao.UsuarioDAO;
-import model.Usuario;
-
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
+import model.Usuario;
 
 public class LoginGUI extends JFrame {
 
@@ -134,10 +133,12 @@ private void realizarLogin() {
 
     } else if (cargo.equalsIgnoreCase("caixa")) {
 
-        CaixaGUI telaCaixa = new CaixaGUI();
-        telaCaixa.setVisible(true);
+          CaixaAberturaGUI telaAbertura =
+            new CaixaAberturaGUI(usuario);
 
-        dispose();
+    telaAbertura.setVisible(true);
+
+    dispose();
 
     } else {
 

@@ -126,7 +126,7 @@ private void realizarLogin() {
     // Verifica o cargo e direciona para a tela correspondente
     if (cargo.equalsIgnoreCase("administrador")) {
 
-        CoStockDashboard dashboard = new CoStockDashboard();
+        AdministradorGUI dashboard = new AdministradorGUI();
         dashboard.setVisible(true);
 
         dispose();

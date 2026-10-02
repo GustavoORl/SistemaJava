@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class Caixa {
-    private int idCaixa;
-    private Usuario usuarioAbertura;
-    private Usuario usuarioFechamento;
+    private int idAbertura;
+    private String idCaixa;
+    private Usuario usuario;
     private LocalDateTime dataAbertura;
     private LocalDateTime dataFechamento;
     private BigDecimal valorAbertura;
@@ -14,23 +14,23 @@ public class Caixa {
     private StatusCaixa status;
 
 
-    public int getIdCaixa() {
+    public int getIdAbertura() {
+        return idAbertura;
+    }
+    public void setIdAbertura(int idAbertura) {
+        this.idAbertura = idAbertura;
+    }
+    public String getIdCaixa() {
         return idCaixa;
     }
-    public void setIdCaixa(int idCaixa) {
+    public void setIdCaixa(String idCaixa) {
         this.idCaixa = idCaixa;
     }
-    public Usuario getUsuarioAbertura() {
-        return usuarioAbertura;
+    public Usuario getUsuario() {
+        return usuario;
     }
-    public void setUsuarioAbertura(Usuario usuarioAbertura) {
-        this.usuarioAbertura = usuarioAbertura;
-    }
-    public Usuario getUsuarioFechamento() {
-        return usuarioFechamento;
-    }
-    public void setUsuarioFechamento(Usuario usuarioFechamento) {
-        this.usuarioFechamento = usuarioFechamento;
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
     }
     public LocalDateTime getDataAbertura() {
         return dataAbertura;

@@ -113,7 +113,7 @@ private void realizarLogin() {
 
     if (usuario == null) {
         lblMensagem.setText(
-            "E-mail ou senha inválidos, ou usuário inativo!"
+            "E-mail ou senha inválidos, ou usuário inativo."
         );
 
         txtSenha.setText("");

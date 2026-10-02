@@ -706,7 +706,7 @@ public class CaixaGUI extends JFrame {
             int id = Integer.parseInt(busca);
 
             Produto produto =
-                    produtoDAO.buscarPorNumero(id);
+                    produtoDAO.buscarPorCodigoOuNome(busca);
 
             if (produto != null && produto.isAtivo()) {
                 return produto;

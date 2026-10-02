@@ -19,18 +19,22 @@
 -- Table structure for table `caixas`
 --
 
+CREATE DATABASE IF NOT EXISTS gestao_vendas;
+USE gestao_vendas;
+
 DROP TABLE IF EXISTS `caixas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `caixas` (
-  `id_caixa` int NOT NULL AUTO_INCREMENT,
+  `id_abertura` int NOT NULL AUTO_INCREMENT,
+  `id_caixa` int NOT NULL,
   `id_usuario` int NOT NULL,
   `data_abertura` datetime DEFAULT CURRENT_TIMESTAMP,
   `data_fechamento` datetime DEFAULT NULL,
   `valor_abertura` decimal(10,2) NOT NULL,
   `valor_fechamento` decimal(10,2) DEFAULT NULL,
   `status` enum('ABERTO','FECHADO') DEFAULT 'ABERTO',
-  PRIMARY KEY (`id_caixa`),
+  PRIMARY KEY (`id_abertura`),
   KEY `id_usuario` (`id_usuario`),
   CONSTRAINT `caixas_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -64,7 +68,7 @@ CREATE TABLE `cargos` (
   `id_cargo` int NOT NULL AUTO_INCREMENT,
   `nome` varchar(50) NOT NULL,
   PRIMARY KEY (`id_cargo`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -79,7 +83,7 @@ CREATE TABLE `categorias` (
   `nome` varchar(100) NOT NULL,
   `descricao` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id_categoria`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -246,7 +250,7 @@ CREATE TABLE `pagamentos` (
   KEY `id_caixa` (`id_caixa`),
   KEY `id_forma_pagamento` (`id_forma_pagamento`),
   CONSTRAINT `pagamentos_ibfk_1` FOREIGN KEY (`id_venda`) REFERENCES `vendas` (`id_venda`),
-  CONSTRAINT `pagamentos_ibfk_2` FOREIGN KEY (`id_caixa`) REFERENCES `caixas` (`id_caixa`),
+  CONSTRAINT `pagamentos_ibfk_2` FOREIGN KEY (`id_caixa`) REFERENCES `caixas` (`id_abertura`),
   CONSTRAINT `pagamentos_ibfk_3` FOREIGN KEY (`id_forma_pagamento`) REFERENCES `formas_pagamento` (`id_forma_pagamento`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -309,7 +313,7 @@ CREATE TABLE `produtos` (
   UNIQUE KEY `codigo_barras` (`codigo_barras`),
   KEY `fk_produto_categoria` (`id_categoria`),
   CONSTRAINT `fk_produto_categoria` FOREIGN KEY (`id_categoria`) REFERENCES `categorias` (`id_categoria`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -369,7 +373,7 @@ CREATE TABLE `usuarios` (
   UNIQUE KEY `email` (`email`),
   KEY `fk_usuario_cargo` (`id_cargo`),
   CONSTRAINT `fk_usuario_cargo` FOREIGN KEY (`id_cargo`) REFERENCES `cargos` (`id_cargo`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -408,4 +412,4 @@ CREATE TABLE `vendas` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-30 18:41:14
+-- Dump completed on 2026-10-01 21:47:40

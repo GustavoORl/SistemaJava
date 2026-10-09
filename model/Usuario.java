@@ -1,80 +1,85 @@
 package model;
 
-public class Usuario extends Pessoa{
-String senha;
-Cargo cargo;
-boolean ativo;
+public class Usuario extends Pessoa {
 
+    String senha;
+    Cargo cargo;
+    boolean ativo;
 
-public Usuario(int id, String nome, String telefone, String email, String endereco, String senha, Cargo cargo, boolean ativo) {
-    
-    super(id, nome, telefone, email, endereco);
-    this.senha = senha;
-    this.cargo = cargo;
-    this.ativo = ativo;
-}
+    public Usuario(int id, String nome, String telefone, String email, String endereco, String senha, Cargo cargo,
+            boolean ativo) {
 
-public Usuario(){}
+        super(id, nome, telefone, email, endereco);
+        this.senha = senha;
+        this.cargo = cargo;
+        this.ativo = ativo;
+    }
 
-public int getId() {
-    return id;
-}
+    public Usuario() {
+    }
 
-public void setId(int id){
-    this.id = id;
-}
+    public int getId() {
+        return id;
+    }
 
-public String getNome() {
-    return nome;
-}
+    public void setId(int id) {
+        this.id = id;
+    }
 
-public void setNome(String nome){
-    this.nome = nome;
-}
+    public String getNome() {
+        return nome;
+    }
 
-public String getTelefone() {
-    return telefone;
-}
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
 
-public void setTelefone(String telefone){
-    this.telefone = telefone;
-}
+    public String getTelefone() {
+        return telefone;
+    }
 
-public String getEmail() {
-    return email;
-}
+    public void setTelefone(String telefone) {
+        this.telefone = telefone;
+    }
 
-public void setEmail(String email){
-    this.email = email;
-}
+    public String getEmail() {
+        return email;
+    }
 
-public String getEndereco() {
-    return endereco;
-}
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-public void setEndereco(String endereco){
-    this.endereco = endereco;
-}
+    public String getEndereco() {
+        return endereco;
+    }
 
-public String getSenha() {
-    return senha;
-}
-public void setSenha(String senha) {
-    this.senha = senha;
-}
-public Cargo getCargo() {
-    return cargo;
-}
-public void setCargo(Cargo cargo) {
-    this.cargo = cargo;
-}
-public boolean isAtivo() {
-    return ativo;
-}
-public void setAtivo(boolean ativo) {
-    this.ativo = ativo;
-}
+    public void setEndereco(String endereco) {
+        this.endereco = endereco;
+    }
 
+    public String getSenha() {
+        return senha;
+    }
 
+    public void setSenha(String senha) {
+        this.senha = senha;
+    }
+
+    public Cargo getCargo() {
+        return cargo;
+    }
+
+    public void setCargo(Cargo cargo) {
+        this.cargo = cargo;
+    }
+
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
+    }
 
 }

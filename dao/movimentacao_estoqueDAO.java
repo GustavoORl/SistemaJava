@@ -85,6 +85,7 @@ public class movimentacao_estoqueDAO {
     }
 
     public List<MovimentacaoEstoque> buscarPorProduto(int idProduto) {
+
         String sql = "SELECT m.id_movimentacao, "
                 + "m.id_produto, "
                 + "p.nome AS produto_nome, "
@@ -100,12 +101,22 @@ public class movimentacao_estoqueDAO {
                 + "WHERE m.id_produto = ? "
                 + "ORDER BY m.data_movimentacao DESC, m.id_movimentacao DESC";
 
+        try (Connection conn = Conexao.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+
+            }
+
+        } catch (Exception e) {
+            // TODO: handle exception
+        }
+
         return null;
 
     }
 
 }
-
-// public List<MovimentacaoEstoque> buscarPorProduto(int idProduto);
-
+    
 // public List<MovimentacaoEstoque> buscarPorUsuario(int idUsuario)

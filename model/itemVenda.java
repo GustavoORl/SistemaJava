@@ -55,5 +55,4 @@ public class itemVenda {
         this.subtotal = subtotal;
     }
 
-    
 }

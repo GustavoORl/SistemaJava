@@ -34,5 +34,5 @@ public class Estoque {
     public void setDataAtualizacao(LocalDateTime dataAtualizacao) {
         this.dataAtualizacao = dataAtualizacao;
     }
- 
+    
 }

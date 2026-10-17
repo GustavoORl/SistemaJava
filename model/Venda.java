@@ -65,5 +65,4 @@ public class Venda {
         this.pagamentos = pagamentos;
     }
 
-    
 }

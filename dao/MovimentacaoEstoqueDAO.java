@@ -12,6 +12,7 @@ import model.Produto;
 import model.Usuario;
 
 public class MovimentacaoEstoqueDAO {
+        
     public void cadastrar(MovimentacaoEstoque movimentacao) {
         String sql = """
                     INSERT INTO movimentacoes_estoque
@@ -34,6 +35,26 @@ public class MovimentacaoEstoqueDAO {
             e.printStackTrace();
         }
     }
+    public void cadastrar(Connection conn, MovimentacaoEstoque movimentacao)
+        throws SQLException {
+
+            String sql = """
+                        INSERT INTO movimentacoes_estoque
+                        (id_produto, id_usuario, tipo, quantidade, motivo)
+                        VALUES (?, ?, ?, ?, ?)
+                    """;
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setInt(1, movimentacao.getProduto().getIdProduto());
+                stmt.setInt(2, movimentacao.getUsuario().getId());
+                stmt.setString(3, movimentacao.getTipo());
+                stmt.setInt(4, movimentacao.getQuantidade());
+                stmt.setString(5, movimentacao.getMotivo());
+
+                stmt.executeUpdate();
+            }
+        }
 
     public List<MovimentacaoEstoque> listar() {
         List<MovimentacaoEstoque> movimentacoes = new ArrayList<>();

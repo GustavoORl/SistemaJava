@@ -11,7 +11,7 @@ import model.MovimentacaoEstoque;
 import model.Produto;
 import model.Usuario;
 
-public class movimentacaoEstoqueDAO {
+public class MovimentacaoEstoqueDAO {
     public void cadastrar(MovimentacaoEstoque movimentacao) {
         String sql = """
                     INSERT INTO movimentacoes_estoque

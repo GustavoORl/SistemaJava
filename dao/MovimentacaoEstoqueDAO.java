@@ -197,7 +197,59 @@ public class MovimentacaoEstoqueDAO {
         }
         return movimentacoes;
     }
-    //public List<MovimentacaoEstoque> buscarPorUsuario(int idUsuario)
 
+    public List<MovimentacaoEstoque> buscarPorUsuario(int idUsuario) {
+        List<MovimentacaoEstoque> movimentacoes = new ArrayList<>();
+
+        String sql = "SELECT m.id_movimentacao, "
+                    + "m.id_produto, "
+                    + "p.nome AS produto_nome, "
+                    + "m.id_usuario, "
+                    + "u.nome AS usuario_nome, "
+                    + "m.tipo, "
+                    + "m.quantidade, "
+                    + "m.motivo, "
+                    + "m.data_movimentacao "
+                    + "FROM movimentacoes_estoque m "
+                    + "INNER JOIN produtos p ON m.id_produto = p.id_produto "
+                    + "INNER JOIN usuarios u ON m.id_usuario = u.id_usuario "
+                    + "WHERE m.id_usuario = ? "
+                    + "ORDER BY m.data_movimentacao DESC, m.id_movimentacao DESC";
+
+        try (Connection conn = Conexao.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setInt(1, idUsuario);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                while (rs.next()) {
+
+                    Produto produto = new Produto();
+                    produto.setIdProduto(rs.getInt("id_produto"));
+                    produto.setNome(rs.getString("produto_nome"));
+
+                    Usuario usuario = new Usuario();
+                    usuario.setId(rs.getInt("id_usuario"));
+                    usuario.setNome(rs.getString("usuario_nome"));
+
+                    MovimentacaoEstoque movimentacao = new MovimentacaoEstoque();
+                    movimentacao.setIdMovimentacao(rs.getInt("id_movimentacao"));
+                    movimentacao.setMotivo(rs.getString("motivo"));
+                    movimentacao.setQuantidade(rs.getInt("quantidade"));
+                    movimentacao.setTipo(rs.getString("tipo"));
+                    movimentacao.setDataMovimentacao(rs.getTimestamp("data_movimentacao").toLocalDateTime());
+                    movimentacao.setProduto(produto);
+                    movimentacao.setUsuario(usuario);
+
+                    movimentacoes.add(movimentacao);
+                }
+            }
+            
+        } catch (SQLException e) {
+            System.out.println("Erro ao buscar movimentações por usuário!");
+            e.printStackTrace();
+        }
+        return movimentacoes;
+    }
 }
-

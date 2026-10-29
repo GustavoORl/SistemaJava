@@ -1,159 +1,183 @@
-
 package view;
 
 import dao.UsuarioDAO;
-import java.awt.*;
-import javax.swing.*;
 import model.Usuario;
+import java.awt.*;
+import java.util.Arrays;
+import java.util.concurrent.ExecutionException;
+import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 
+/** Tela inicial do CoStock: autentica no banco e direciona por cargo. */
 public class LoginGUI extends JFrame {
-
-    private JPanel painelPrincipal;
-    private JLabel lblTitulo;
-    private JLabel lblEmail;
-    private JLabel lblSenha;
+    private static final Color VERDE = Color.decode("#173C38");
+    private static final Color FUNDO = Color.decode("#F5F7F6");
+    private static final Color TEXTO = Color.decode("#20312E");
+    private final UsuarioDAO usuarioDAO = new UsuarioDAO();
     private JTextField txtEmail;
     private JPasswordField txtSenha;
     private JButton btnEntrar;
     private JLabel lblMensagem;
 
-    private UsuarioDAO usuarioDAO;
-
     public LoginGUI() {
-
-        usuarioDAO = new UsuarioDAO();
-
-        setTitle("Sistema de Mercado - Login");
-        setSize(420, 500);
+        super("CoStock | Entrar");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setSize(490, 540);
+        setMinimumSize(new Dimension(450, 520));
         setLocationRelativeTo(null);
-        setResizable(false);
-
         criarComponentes();
     }
 
     private void criarComponentes() {
+        JPanel fundo = new JPanel(new GridBagLayout());
+        fundo.setBackground(FUNDO);
+        fundo.setBorder(new EmptyBorder(24, 24, 24, 24));
+        setContentPane(fundo);
 
-        painelPrincipal = new JPanel();
-        painelPrincipal.setLayout(null);
-        painelPrincipal.setBackground(new Color(245, 247, 250));
+        JPanel cartao = new JPanel();
+        cartao.setLayout(new BoxLayout(cartao, BoxLayout.Y_AXIS));
+        cartao.setBackground(Color.WHITE);
+        cartao.setBorder(new EmptyBorder(34, 38, 34, 38));
+        cartao.setPreferredSize(new Dimension(400, 435));
+        fundo.add(cartao);
 
-        lblTitulo = new JLabel("SISTEMA DE MERCADO");
-        lblTitulo.setFont(new Font("Arial", Font.BOLD, 22));
-        lblTitulo.setForeground(new Color(30, 60, 90));
-        lblTitulo.setHorizontalAlignment(SwingConstants.CENTER);
-        lblTitulo.setBounds(30, 35, 340, 40);
+        JLabel marca = new JLabel("CoStock");
+        marca.setFont(new Font("SansSerif", Font.BOLD, 32));
+        marca.setForeground(VERDE);
+        marca.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cartao.add(marca);
+        cartao.add(Box.createVerticalStrut(8));
 
-        JLabel lblSubtitulo = new JLabel("Acesse sua conta");
-        lblSubtitulo.setFont(new Font("Arial", Font.PLAIN, 14));
-        lblSubtitulo.setForeground(Color.GRAY);
-        lblSubtitulo.setHorizontalAlignment(SwingConstants.CENTER);
-        lblSubtitulo.setBounds(30, 80, 340, 25);
+        JLabel descricao = new JLabel("Acesse sua conta para continuar");
+        descricao.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        descricao.setForeground(Color.decode("#64746F"));
+        descricao.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cartao.add(descricao);
+        cartao.add(Box.createVerticalStrut(35));
 
-        lblEmail = new JLabel("E-mail");
-        lblEmail.setFont(new Font("Arial", Font.BOLD, 14));
-        lblEmail.setBounds(45, 140, 300, 25);
-
+        cartao.add(rotulo("E-mail"));
+        cartao.add(Box.createVerticalStrut(7));
         txtEmail = new JTextField();
-        txtEmail.setFont(new Font("Arial", Font.PLAIN, 15));
-        txtEmail.setBounds(45, 170, 310, 40);
+        estilizarCampo(txtEmail);
+        cartao.add(txtEmail);
+        cartao.add(Box.createVerticalStrut(18));
 
-        lblSenha = new JLabel("Senha");
-        lblSenha.setFont(new Font("Arial", Font.BOLD, 14));
-        lblSenha.setBounds(45, 230, 300, 25);
-
+        cartao.add(rotulo("Senha"));
+        cartao.add(Box.createVerticalStrut(7));
         txtSenha = new JPasswordField();
-        txtSenha.setFont(new Font("Arial", Font.PLAIN, 15));
-        txtSenha.setBounds(45, 260, 310, 40);
+        estilizarCampo(txtSenha);
+        cartao.add(txtSenha);
+        cartao.add(Box.createVerticalStrut(26));
 
-        btnEntrar = new JButton("ENTRAR");
-        btnEntrar.setFont(new Font("Arial", Font.BOLD, 15));
+        btnEntrar = new JButton("Entrar no sistema");
+        btnEntrar.setFont(new Font("SansSerif", Font.BOLD, 14));
+        btnEntrar.setBackground(VERDE);
         btnEntrar.setForeground(Color.WHITE);
-        btnEntrar.setBackground(new Color(0, 128, 128));
-        btnEntrar.setBounds(45, 330, 310, 45);
+        btnEntrar.setOpaque(true);
         btnEntrar.setFocusPainted(false);
-        btnEntrar.setCursor(new Cursor(Cursor.HAND_CURSOR));
-
-        lblMensagem = new JLabel("");
-        lblMensagem.setFont(new Font("Arial", Font.PLAIN, 12));
-        lblMensagem.setForeground(Color.RED);
-        lblMensagem.setHorizontalAlignment(SwingConstants.CENTER);
-        lblMensagem.setBounds(30, 385, 340, 25);
-
-        // Evento do botão
+        btnEntrar.setBorderPainted(false);
+        btnEntrar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnEntrar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
+        btnEntrar.setAlignmentX(Component.LEFT_ALIGNMENT);
         btnEntrar.addActionListener(e -> realizarLogin());
+        cartao.add(btnEntrar);
+        cartao.add(Box.createVerticalStrut(15));
 
-        // Permite apertar Enter para entrar
+        lblMensagem = new JLabel(" ");
+        lblMensagem.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lblMensagem.setForeground(Color.decode("#B42318"));
+        lblMensagem.setAlignmentX(Component.LEFT_ALIGNMENT);
+        cartao.add(lblMensagem);
         getRootPane().setDefaultButton(btnEntrar);
-
-        painelPrincipal.add(lblTitulo);
-        painelPrincipal.add(lblSubtitulo);
-        painelPrincipal.add(lblEmail);
-        painelPrincipal.add(txtEmail);
-        painelPrincipal.add(lblSenha);
-        painelPrincipal.add(txtSenha);
-        painelPrincipal.add(btnEntrar);
-        painelPrincipal.add(lblMensagem);
-
-        add(painelPrincipal);
     }
 
-   
-private void realizarLogin() {
-
-    String email = txtEmail.getText().trim();
-    String senha = new String(txtSenha.getPassword());
-
-    if (email.isEmpty() || senha.isEmpty()) {
-        lblMensagem.setText("Preencha todos os campos.");
-        return;
+    private JLabel rotulo(String texto) {
+        JLabel label = new JLabel(texto);
+        label.setForeground(TEXTO);
+        label.setFont(new Font("SansSerif", Font.BOLD, 13));
+        label.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return label;
     }
 
-    Usuario usuario = usuarioDAO.autenticar(email, senha);
-
-    if (usuario == null) {
-        lblMensagem.setText(
-            "E-mail ou senha inválidos, ou usuário inativo."
-        );
-
-        txtSenha.setText("");
-        return;
+    private void estilizarCampo(JTextField campo) {
+        campo.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        campo.setForeground(TEXTO);
+        campo.setBackground(Color.WHITE);
+        campo.setCaretColor(VERDE);
+        campo.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.decode("#CFDCD6")),
+                new EmptyBorder(9, 12, 9, 12)));
+        campo.setMaximumSize(new Dimension(Integer.MAX_VALUE, 43));
+        campo.setAlignmentX(Component.LEFT_ALIGNMENT);
     }
 
-    // Obtém o nome do cargo do usuário autenticado
-    String cargo = usuario.getCargo().getNome();
+    private void realizarLogin() {
+        String email = txtEmail.getText().trim();
+        char[] caracteres = txtSenha.getPassword();
+        String senha = new String(caracteres);
+        Arrays.fill(caracteres, '\0');
 
-    // Verifica o cargo e direciona para a tela correspondente
-    if (cargo.equalsIgnoreCase("administrador")) {
+        if (email.isEmpty() || senha.isEmpty()) {
+            lblMensagem.setText("Informe seu e-mail e sua senha.");
+            return;
+        }
 
-        AdministradorGUI dashboard = new AdministradorGUI();
-        dashboard.setVisible(true);
+        btnEntrar.setEnabled(false);
+        btnEntrar.setText("Verificando...");
+        lblMensagem.setText(" ");
 
-        dispose();
-
-    } else if (cargo.equalsIgnoreCase("caixa")) {
-
-          CaixaAberturaGUI telaAbertura =
-            new CaixaAberturaGUI(usuario);
-
-    telaAbertura.setVisible(true);
-
-    dispose();
-
-    } else {
-
-        JOptionPane.showMessageDialog(
-            this,
-            "Não existe uma tela disponível para o cargo: " + cargo,
-            "Acesso não disponível",
-            JOptionPane.WARNING_MESSAGE
-        );
+        // Executa a consulta fora da thread gráfica para não congelar a tela.
+        new SwingWorker<Usuario, Void>() {
+            @Override protected Usuario doInBackground() {
+                return usuarioDAO.autenticar(email, senha);
+            }
+            @Override protected void done() {
+                btnEntrar.setEnabled(true);
+                btnEntrar.setText("Entrar no sistema");
+                try {
+                    Usuario usuario = get();
+                    if (usuario == null) {
+                        lblMensagem.setText("E-mail ou senha inválidos, ou usuário inativo.");
+                        txtSenha.setText("");
+                        return;
+                    }
+                    direcionarUsuario(usuario);
+                } catch (InterruptedException ex) {
+                    Thread.currentThread().interrupt();
+                    lblMensagem.setText("A autenticação foi interrompida.");
+                } catch (ExecutionException ex) {
+                    lblMensagem.setText("Falha ao consultar o banco de dados.");
+                    JOptionPane.showMessageDialog(LoginGUI.this,
+                            ex.getCause().getMessage(), "Erro de conexão", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+        }.execute();
     }
-}
+
+    private void direcionarUsuario(Usuario usuario) {
+        String cargo = usuario.getCargo() == null ? "" : usuario.getCargo().getNome().trim();
+        if (cargo.equalsIgnoreCase("Administrador")) {
+            new AdministradorGUI().setVisible(true);
+            dispose();
+        } else if (cargo.equalsIgnoreCase("Operador de Caixa") || cargo.equalsIgnoreCase("Caixa")) {
+            new CaixaAberturaGUI(usuario).setVisible(true);
+            dispose();
+        } else if (cargo.equalsIgnoreCase("Gerente")) {
+            JOptionPane.showMessageDialog(this,
+                    "Login realizado. A tela do gerente ainda não foi implementada.",
+                    "Área do gerente", JOptionPane.INFORMATION_MESSAGE);
+            // Mantém o login aberto até a tela do gerente existir.
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    "O cargo '" + cargo + "' ainda não possui uma tela associada.",
+                    "Acesso não configurado", JOptionPane.WARNING_MESSAGE);
+        }
+    }
 
     public static void main(String[] args) {
-
         SwingUtilities.invokeLater(() -> {
+            try { UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName()); }
+            catch (Exception ignored) { }
             new LoginGUI().setVisible(true);
         });
     }

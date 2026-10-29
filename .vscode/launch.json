@@ -1,0 +1,23 @@
+
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "LoginGUI",
+      "request": "launch",
+      "mainClass": "view.LoginGUI",
+      "projectName": "SistemaJava_58024b4c"
+    },
+    {
+      "type": "java",
+      "name": "CoStock - Administrador",
+      "request": "launch",
+      "mainClass": "view.AdministradorGUI",
+      "classPaths": [
+        "$Auto",
+        "${workspaceFolder}/lib/mysql-connector-j-9.0.0.jar"
+      ]
+    }
+  ]
+}

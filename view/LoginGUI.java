@@ -157,16 +157,14 @@ public class LoginGUI extends JFrame {
     private void direcionarUsuario(Usuario usuario) {
         String cargo = usuario.getCargo() == null ? "" : usuario.getCargo().getNome().trim();
         if (cargo.equalsIgnoreCase("Administrador")) {
-            new AdministradorGUI().setVisible(true);
+            new AdministradorGUI(usuario).setVisible(true);
             dispose();
         } else if (cargo.equalsIgnoreCase("Operador de Caixa") || cargo.equalsIgnoreCase("Caixa")) {
             new CaixaAberturaGUI(usuario).setVisible(true);
             dispose();
         } else if (cargo.equalsIgnoreCase("Gerente")) {
-            JOptionPane.showMessageDialog(this,
-                    "Login realizado. A tela do gerente ainda não foi implementada.",
-                    "Área do gerente", JOptionPane.INFORMATION_MESSAGE);
-            // Mantém o login aberto até a tela do gerente existir.
+            new GerenteGUI(usuario).setVisible(true);
+            dispose();
         } else {
             JOptionPane.showMessageDialog(this,
                     "O cargo '" + cargo + "' ainda não possui uma tela associada.",

@@ -1,6 +1,7 @@
 package view;
 
 import dao.AdministradorConsultaDAO;
+import model.Usuario;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
@@ -34,6 +35,8 @@ public class AdministradorGUI extends JFrame {
     private static final Color BORDER = Color.decode("#DFE7E3");
     private static final Color SIDEBAR_TEXT = Color.decode("#E8F2EF");
 
+    private final Usuario usuarioLogado;
+    private final boolean gerente;
     private final AdministradorConsultaDAO consultas = new AdministradorConsultaDAO();
     private final Map<String, NavButton> menuButtons = new LinkedHashMap<>();
     private final JPanel content = new JPanel(new BorderLayout());
@@ -46,7 +49,17 @@ public class AdministradorGUI extends JFrame {
     private long requestVersion = 0;
 
     public AdministradorGUI() {
-        super("CoStock | Administração");
+        this(null, false);
+    }
+
+    public AdministradorGUI(Usuario usuario) {
+        this(usuario, false);
+    }
+
+    protected AdministradorGUI(Usuario usuario, boolean acessoGerente) {
+        super(acessoGerente ? "CoStock | Gerência" : "CoStock | Administração");
+        this.usuarioLogado = usuario;
+        this.gerente = acessoGerente;
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1280, 760);
         setMinimumSize(new Dimension(1040, 650));
@@ -88,15 +101,19 @@ public class AdministradorGUI extends JFrame {
         JPanel brand = transparent(new GridLayout(2, 1, 0, 2));
         brand.setBorder(new EmptyBorder(30, 24, 25, 20));
         brand.add(label("CoStock", 29, true, WHITE));
-        brand.add(label("PAINEL ADMINISTRATIVO", 10, true, SIDEBAR_TEXT));
+        brand.add(label(gerente ? "PAINEL GERENCIAL" : "PAINEL ADMINISTRATIVO", 10, true, SIDEBAR_TEXT));
         sidebar.add(brand, BorderLayout.NORTH);
 
         JPanel menu = transparent();
         menu.setLayout(new BoxLayout(menu, BoxLayout.Y_AXIS));
         menu.setBorder(new EmptyBorder(12, 12, 12, 12));
 
-        for (String page : new String[]{"Início", "Usuários", "Cargos e Permissões",
-                "Produtos", "Categorias", "Estoque", "Caixas", "Relatórios", "Configurações"}) {
+        String[] secoes = gerente
+                ? new String[]{"Início", "Produtos", "Abrir Caixa", "Caixas", "Estoque", "Movimentações de Estoque"}
+                : new String[]{"Início", "Vendas", "Faturamento", "Boletos", "Usuários",
+                        "Cargos e Permissões", "Produtos", "Categorias", "Estoque",
+                        "Movimentações de Estoque", "Caixas", "Abrir Caixa", "Relatórios", "Configurações"};
+        for (String page : secoes) {
             NavButton button = new NavButton(page);
             button.setAlignmentX(Component.LEFT_ALIGNMENT);
             button.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
@@ -141,6 +158,16 @@ public class AdministradorGUI extends JFrame {
     }
 
     private void navigate(String page) {
+        if (gerente && !java.util.Arrays.asList("Início", "Produtos", "Abrir Caixa", "Caixas",
+                "Estoque", "Movimentações de Estoque").contains(page)) return;
+        if ("Abrir Caixa".equals(page)) {
+            if (usuarioLogado == null) {
+                JOptionPane.showMessageDialog(this, "Entre pelo login para abrir o caixa.");
+            } else {
+                new CaixaAberturaGUI(usuarioLogado).setVisible(true);
+            }
+            return;
+        }
         currentPage = page;
         requestVersion++;
         for (Map.Entry<String, NavButton> entry : menuButtons.entrySet()) {
@@ -154,6 +181,9 @@ public class AdministradorGUI extends JFrame {
         currentSorter = null;
 
         if (page.equals("Início")) buildDashboard();
+        else if (page.equals("Boletos"))
+            buildPlaceholder("Boletos", "Módulo de boletos ainda não implementado no banco/sistema.");
+        else if (page.equals("Faturamento")) buildFinancialPanel();
         else if (page.equals("Relatórios"))
             buildPlaceholder("Relatórios", "Os relatórios detalhados ainda não foram implementados.");
         else if (page.equals("Configurações"))
@@ -191,7 +221,7 @@ public class AdministradorGUI extends JFrame {
         JPanel body = transparent(new BorderLayout(0, 28));
         JPanel metrics = transparent(new GridLayout(1, 4, 14, 0));
         metrics.setPreferredSize(new Dimension(0, 136));
-        metrics.add(metric("USUÁRIOS", "—", "Cadastrados"));
+        metrics.add(metric(gerente ? "CAIXAS ABERTOS" : "USUÁRIOS", "—", "Cadastrados / abertos"));
         metrics.add(metric("PRODUTOS", "—", "Cadastrados"));
         metrics.add(metric("ESTOQUE", "—", "Abaixo do mínimo"));
         metrics.add(metric("CAIXAS", "—", "Total cadastrado"));
@@ -200,7 +230,9 @@ public class AdministradorGUI extends JFrame {
         JPanel shortcuts = transparent(new BorderLayout(0, 15));
         shortcuts.add(label("Acesso rápido", 19, true, TEXT), BorderLayout.NORTH);
         JPanel grid = transparent(new GridLayout(2, 3, 14, 14));
-        for (String section : new String[]{"Usuários", "Produtos", "Categorias", "Estoque", "Caixas", "Relatórios"}) {
+        for (String section : (gerente
+                ? new String[]{"Produtos", "Abrir Caixa", "Caixas", "Estoque", "Movimentações de Estoque"}
+                : new String[]{"Vendas", "Faturamento", "Estoque", "Abrir Caixa", "Caixas", "Relatórios"})) {
             JPanel tile = new JPanel(new BorderLayout(0, 8));
             tile.setBackground(WHITE);
             tile.setBorder(BorderFactory.createCompoundBorder(
@@ -236,7 +268,7 @@ public class AdministradorGUI extends JFrame {
         new SwingWorker<String[], Void>() {
             @Override protected String[] doInBackground() {
                 String[] values = new String[4];
-                try { values[0] = Integer.toString(consultas.contar("usuarios")); }
+                try { values[0] = Integer.toString(gerente ? consultas.contarCaixasAbertos() : consultas.contar("usuarios")); }
                 catch (SQLException e) { values[0] = "Erro"; }
                 try { values[1] = Integer.toString(consultas.contar("produtos")); }
                 catch (SQLException e) { values[1] = "Erro"; }
@@ -251,7 +283,7 @@ public class AdministradorGUI extends JFrame {
                 try {
                     String[] values = get();
                     metrics.removeAll();
-                    metrics.add(metric("USUÁRIOS", values[0], "Cadastrados"));
+                    metrics.add(metric(gerente ? "CAIXAS ABERTOS" : "USUÁRIOS", values[0], gerente ? "Em operação" : "Cadastrados"));
                     metrics.add(metric("PRODUTOS", values[1], "Cadastrados"));
                     metrics.add(metric("ESTOQUE", values[2], "Abaixo do mínimo"));
                     metrics.add(metric("CAIXAS", values[3], "Total cadastrado"));
@@ -269,6 +301,10 @@ public class AdministradorGUI extends JFrame {
             case "Categorias": return "Organizar categorias";
             case "Estoque": return "Consultar quantidades";
             case "Caixas": return "Acompanhar caixas";
+            case "Abrir Caixa": return "Iniciar operação";
+            case "Vendas": return "Consultar vendas";
+            case "Faturamento": return "Diário, semanal e mensal";
+            case "Movimentações de Estoque": return "Entradas e saídas";
             default: return "Indicadores e análises";
         }
     }
@@ -281,6 +317,8 @@ public class AdministradorGUI extends JFrame {
             case "Categorias": return "categorias";
             case "Estoque": return "estoque";
             case "Caixas": return "caixas";
+            case "Vendas": return "vendas";
+            case "Movimentações de Estoque": return "movimentacoes_estoque";
             default: throw new IllegalArgumentException("Seção desconhecida: " + section);
         }
     }
@@ -400,6 +438,36 @@ public class AdministradorGUI extends JFrame {
             tableStatus.setText(currentTable.getRowCount() + " registro(s) exibido(s)"
                     + (term.isEmpty() ? "" : " para: " + term));
         }
+    }
+
+    private void buildFinancialPanel() {
+        JPanel panel = transparent(new BorderLayout(0, 18));
+        panel.add(label("Faturamento de vendas finalizadas", 22, true, TEXT), BorderLayout.NORTH);
+        JPanel cards = transparent(new GridLayout(1, 3, 14, 0));
+        cards.add(metric("HOJE", "—", "Vendas finalizadas"));
+        cards.add(metric("ÚLTIMOS 7 DIAS", "—", "Vendas finalizadas"));
+        cards.add(metric("MÊS ATUAL", "—", "Vendas finalizadas"));
+        panel.add(cards, BorderLayout.CENTER);
+        panel.add(label("Valores brutos; não incluem despesas ou boletos.", 12, false, MUTED), BorderLayout.SOUTH);
+        content.add(panel, BorderLayout.NORTH);
+        final long version = requestVersion;
+        new SwingWorker<String[], Void>() {
+            @Override protected String[] doInBackground() throws Exception {
+                return consultas.resumoFaturamento();
+            }
+            @Override protected void done() {
+                if (version != requestVersion || !"Faturamento".equals(currentPage)) return;
+                try {
+                    String[] v = get();
+                    cards.removeAll();
+                    cards.add(metric("HOJE", v[0], "Vendas finalizadas"));
+                    cards.add(metric("ÚLTIMOS 7 DIAS", v[1], "Vendas finalizadas"));
+                    cards.add(metric("MÊS ATUAL", v[2], "Vendas finalizadas"));
+                    cards.revalidate();
+                    cards.repaint();
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
     }
 
     private void buildPlaceholder(String title, String message) {

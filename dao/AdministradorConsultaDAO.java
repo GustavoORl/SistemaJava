@@ -8,7 +8,8 @@ public class AdministradorConsultaDAO {
     public DefaultTableModel listar(String tabela) throws SQLException {
         if (!tabela.equals("usuarios") && !tabela.equals("cargos") &&
             !tabela.equals("produtos") && !tabela.equals("categorias") &&
-            !tabela.equals("estoque") && !tabela.equals("caixas")) {
+            !tabela.equals("estoque") && !tabela.equals("caixas") &&
+            !tabela.equals("vendas") && !tabela.equals("movimentacoes_estoque")) {
             throw new IllegalArgumentException("Tabela não autorizada: " + tabela);
         }
         String sql = "SELECT * FROM " + tabela;
@@ -55,6 +56,30 @@ public class AdministradorConsultaDAO {
              ResultSet rs = stmt.executeQuery()) {
             rs.next();
             return rs.getInt(1);
+        }
+    }
+
+    public int contarCaixasAbertos() throws SQLException {
+        try (Connection c = Conexao.getConnection();
+             PreparedStatement s = c.prepareStatement("SELECT COUNT(*) FROM caixas WHERE status = 'ABERTO'");
+             ResultSet r = s.executeQuery()) {
+            r.next();
+            return r.getInt(1);
+        }
+    }
+
+    public String[] resumoFaturamento() throws SQLException {
+        String sql = "SELECT " +
+            "COALESCE(SUM(CASE WHEN DATE(data_venda) = CURDATE() THEN valor_total ELSE 0 END), 0), " +
+            "COALESCE(SUM(CASE WHEN data_venda >= CURDATE() - INTERVAL 6 DAY THEN valor_total ELSE 0 END), 0), " +
+            "COALESCE(SUM(CASE WHEN YEAR(data_venda) = YEAR(CURDATE()) AND MONTH(data_venda) = MONTH(CURDATE()) THEN valor_total ELSE 0 END), 0) " +
+            "FROM vendas WHERE status = 'FINALIZADA'";
+        try (Connection c = Conexao.getConnection();
+             PreparedStatement s = c.prepareStatement(sql);
+             ResultSet r = s.executeQuery()) {
+            r.next();
+            java.text.NumberFormat fmt = java.text.NumberFormat.getCurrencyInstance(new java.util.Locale("pt", "BR"));
+            return new String[]{fmt.format(r.getBigDecimal(1)), fmt.format(r.getBigDecimal(2)), fmt.format(r.getBigDecimal(3))};
         }
     }
 }

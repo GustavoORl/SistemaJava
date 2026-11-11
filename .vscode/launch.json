@@ -7,6 +7,20 @@
       "name": "LoginGUI",
       "request": "launch",
       "mainClass": "view.LoginGUI",
+      "projectName": "SistemaJava_98920cdc"
+    },
+    {
+      "type": "java",
+      "name": "CaixaAberturaGUI",
+      "request": "launch",
+      "mainClass": "view.CaixaAberturaGUI",
+      "projectName": "SistemaJava_98920cdc"
+    },
+    {
+      "type": "java",
+      "name": "LoginGUI",
+      "request": "launch",
+      "mainClass": "view.LoginGUI",
       "projectName": "SistemaJava_58024b4c"
     },
     {

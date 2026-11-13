@@ -4,7 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 public class Caixa {
-    private int idAbertura;
+    private int idTabelaCaixa;
     private String idCaixa;
     private Usuario usuario;
     private LocalDateTime dataAbertura;
@@ -14,11 +14,11 @@ public class Caixa {
     private StatusCaixa status;
 
 
-    public int getIdAbertura() {
-        return idAbertura;
+    public int getIdTabelaCaixa() {
+        return idTabelaCaixa;
     }
-    public void setIdAbertura(int idAbertura) {
-        this.idAbertura = idAbertura;
+    public void setIdTabelaCaixa(int idTabelaCaixa) {
+        this.idTabelaCaixa = idTabelaCaixa;
     }
     public String getIdCaixa() {
         return idCaixa;

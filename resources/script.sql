@@ -25,15 +25,18 @@ DROP TABLE IF EXISTS `caixas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `caixas` (
-  `id_abertura` int NOT NULL AUTO_INCREMENT,
+  `id_tabela_caixa` int NOT NULL AUTO_INCREMENT,
   `id_caixa` int NOT NULL,
   `id_usuario` int NOT NULL,
   `data_abertura` datetime DEFAULT CURRENT_TIMESTAMP,
   `data_fechamento` datetime DEFAULT NULL,
   `valor_abertura` decimal(10,2) NOT NULL,
   `valor_fechamento` decimal(10,2) DEFAULT NULL,
+  `valor_esperado` DECIMAL(10,2) NULL,
+  `diferenca` DECIMAL(10,2) NULL,
+  `observacao_fechamento` VARCHAR(500) NULL,
   `status` enum('ABERTO','FECHADO') DEFAULT 'ABERTO',
-  PRIMARY KEY (`id_abertura`),
+  PRIMARY KEY (`id_tabela_caixa`),
   KEY `id_usuario` (`id_usuario`),
   CONSTRAINT `caixas_ibfk_1` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -45,7 +48,7 @@ CREATE TABLE `caixas` (
 
 LOCK TABLES `caixas` WRITE;
 /*!40000 ALTER TABLE `caixas` DISABLE KEYS */;
-INSERT INTO `caixas` VALUES (1,6,2,'2026-10-27 19:46:02','2026-10-27 19:47:24',250.00,250.00,'FECHADO'),(2,3,2,'2026-10-29 19:35:04',NULL,200.00,NULL,'ABERTO');
+INSERT INTO `caixas` VALUES (1,6,2,'2026-10-27 19:46:02','2026-10-27 19:47:24',250.00,500.00, 500.00, 0, null, 'FECHADO'),(2,1,2,'2026-10-28 19:46:02','2026-10-28 19:47:24',250.00,500.00, 500.00, 0, null, 'FECHADO');
 /*!40000 ALTER TABLE `caixas` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -343,16 +346,16 @@ DROP TABLE IF EXISTS `pagamentos`;
 CREATE TABLE `pagamentos` (
   `id_pagamento` int NOT NULL AUTO_INCREMENT,
   `id_venda` int NOT NULL,
-  `id_caixa` int NOT NULL,
+  `id_tabela_caixa` int NOT NULL,
   `id_forma_pagamento` int NOT NULL,
   `valor` decimal(10,2) NOT NULL,
   `data_pagamento` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id_pagamento`),
   KEY `id_venda` (`id_venda`),
-  KEY `id_caixa` (`id_caixa`),
+  KEY `id_tabela_caixa` (`id_tabela_caixa`),
   KEY `id_forma_pagamento` (`id_forma_pagamento`),
   CONSTRAINT `pagamentos_ibfk_1` FOREIGN KEY (`id_venda`) REFERENCES `vendas` (`id_venda`),
-  CONSTRAINT `pagamentos_ibfk_2` FOREIGN KEY (`id_caixa`) REFERENCES `caixas` (`id_abertura`),
+  CONSTRAINT `pagamentos_ibfk_2` FOREIGN KEY (`id_tabela_caixa`) REFERENCES `caixas` (`id_tabela_caixa`),
   CONSTRAINT `pagamentos_ibfk_3` FOREIGN KEY (`id_forma_pagamento`) REFERENCES `formas_pagamento` (`id_forma_pagamento`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -552,6 +555,7 @@ DROP TABLE IF EXISTS `vendas`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `vendas` (
   `id_venda` int NOT NULL AUTO_INCREMENT,
+  `id_tabela_caixa` INT NULL,
   `id_cliente` int DEFAULT NULL,
   `id_usuario` int NOT NULL,
   `data_venda` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -566,7 +570,8 @@ CREATE TABLE `vendas` (
   KEY `id_usuario_cancelamento` (`id_usuario_cancelamento`),
   CONSTRAINT `vendas_ibfk_1` FOREIGN KEY (`id_cliente`) REFERENCES `clientes` (`id_cliente`),
   CONSTRAINT `vendas_ibfk_2` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`id_usuario`),
-  CONSTRAINT `vendas_ibfk_3` FOREIGN KEY (`id_usuario_cancelamento`) REFERENCES `usuarios` (`id_usuario`)
+  CONSTRAINT `vendas_ibfk_3` FOREIGN KEY (`id_usuario_cancelamento`) REFERENCES `usuarios` (`id_usuario`),
+  CONSTRAINT `vendas_ibfk_4` FOREIGN KEY (`id_tabela_caixa`) REFERENCES `caixas`(`id_tabela_caixa`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -589,3 +594,28 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2026-10-29 20:09:41
+
+
+INSERT INTO formas_pagamento (nome)
+SELECT 'DINHEIRO'
+WHERE NOT EXISTS (
+    SELECT 1 FROM formas_pagamento WHERE nome = 'DINHEIRO'
+);
+
+INSERT INTO formas_pagamento (nome)
+SELECT 'PIX'
+WHERE NOT EXISTS (
+    SELECT 1 FROM formas_pagamento WHERE nome = 'PIX'
+);
+
+INSERT INTO formas_pagamento (nome)
+SELECT 'CARTAO_DEBITO'
+WHERE NOT EXISTS (
+    SELECT 1 FROM formas_pagamento WHERE nome = 'CARTAO_DEBITO'
+);
+
+INSERT INTO formas_pagamento (nome)
+SELECT 'CARTAO_CREDITO'
+WHERE NOT EXISTS (
+    SELECT 1 FROM formas_pagamento WHERE nome = 'CARTAO_CREDITO'
+);

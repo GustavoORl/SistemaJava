@@ -1,14 +1,14 @@
 package dao;
 
-import model.Caixa;
-import model.StatusCaixa;
-import model.Usuario;
-
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import model.Caixa;
+import model.ResumoFechamentoCaixa;
+import model.StatusCaixa;
+import model.Usuario;
 
 public class CaixaDAO {
 
@@ -60,14 +60,14 @@ public class CaixaDAO {
             stmt.executeUpdate();
 
             // ====================================================
-            // RECUPERA O id_abertura GERADO PELO BANCO
+            // RECUPERA O id_tabela_caixa GERADO PELO BANCO
             // ====================================================
 
             try (ResultSet rs = stmt.getGeneratedKeys()) {
 
                 if (rs.next()) {
 
-                    caixa.setIdAbertura(
+                    caixa.setIdTabelaCaixa(
                             rs.getInt(1)
                     );
                 }
@@ -95,7 +95,7 @@ public class CaixaDAO {
 
         String sql = """
             SELECT
-                c.id_abertura,
+                c.id_tabela_caixa,
                 c.id_caixa,
                 c.id_usuario,
                 c.data_abertura,
@@ -107,7 +107,7 @@ public class CaixaDAO {
             FROM caixas c
             INNER JOIN usuarios u
                 ON c.id_usuario = u.id_usuario
-            ORDER BY c.id_abertura DESC
+            ORDER BY c.id_tabela_caixa DESC
             """;
 
         try (Connection conn = Conexao.getConnection();
@@ -133,15 +133,15 @@ public class CaixaDAO {
     // ============================================================
     // BUSCAR ABERTURA POR ID
     // ============================================================
-    // Aqui usamos id_abertura, pois ele identifica
+    // Aqui usamos id_tabela_caixa, pois ele identifica
     // unicamente uma abertura de caixa.
     // ============================================================
 
-    public Caixa buscarPorId(int idAbertura) {
+    public Caixa buscarPorId(int idTabelaCaixa) {
 
         String sql = """
             SELECT
-                c.id_abertura,
+                c.id_tabela_caixa,
                 c.id_caixa,
                 c.id_usuario,
                 c.data_abertura,
@@ -153,7 +153,7 @@ public class CaixaDAO {
             FROM caixas c
             INNER JOIN usuarios u
                 ON c.id_usuario = u.id_usuario
-            WHERE c.id_abertura = ?
+            WHERE c.id_tabela_caixa = ?
             """;
 
         try (Connection conn = Conexao.getConnection();
@@ -161,7 +161,7 @@ public class CaixaDAO {
 
             stmt.setInt(
                     1,
-                    idAbertura
+                    idTabelaCaixa
             );
 
             try (ResultSet rs =
@@ -186,93 +186,46 @@ public class CaixaDAO {
     // BUSCAR CAIXA ABERTO
     // ============================================================
 
-    public Caixa buscarCaixaAberto() {
+    public Caixa buscarCaixaAberto(String idCaixa) {
 
-        String sql = """
-            SELECT
-                c.id_abertura,
-                c.id_caixa,
-                c.id_usuario,
-                c.data_abertura,
-                c.data_fechamento,
-                c.valor_abertura,
-                c.valor_fechamento,
-                c.status,
-                u.nome AS nome_usuario
-            FROM caixas c
-            INNER JOIN usuarios u
-                ON c.id_usuario = u.id_usuario
-            WHERE c.status = 'ABERTO'
-            LIMIT 1
-            """;
+    String sql = """
+        SELECT
+            c.id_tabela_caixa,
+            c.id_caixa,
+            c.id_usuario,
+            c.data_abertura,
+            c.data_fechamento,
+            c.valor_abertura,
+            c.valor_fechamento,
+            c.status,
+            u.nome AS nome_usuario
+        FROM caixas c
+        INNER JOIN usuarios u
+            ON c.id_usuario = u.id_usuario
+        WHERE c.id_caixa = ?
+          AND c.status = 'ABERTO'
+        LIMIT 1
+        """;
 
-        try (Connection conn = Conexao.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setString(1, idCaixa);
+
+        try (ResultSet rs = stmt.executeQuery()) {
 
             if (rs.next()) {
-
                 return mapearCaixa(rs);
             }
-
-        } catch (SQLException e) {
-
-            e.printStackTrace();
         }
 
-        return null;
+    } catch (SQLException e) {
+        e.printStackTrace();
     }
 
+    return null;
+}
 
-    // ============================================================
-    // BUSCAR ABERTURA PELO IDENTIFICADOR DO CAIXA
-    // ============================================================
-
-    public Caixa buscarPorCaixa(String idCaixa) {
-
-        String sql = """
-            SELECT
-                c.id_abertura,
-                c.id_caixa,
-                c.id_usuario,
-                c.data_abertura,
-                c.data_fechamento,
-                c.valor_abertura,
-                c.valor_fechamento,
-                c.status,
-                u.nome AS nome_usuario
-            FROM caixas c
-            INNER JOIN usuarios u
-                ON c.id_usuario = u.id_usuario
-            WHERE c.id_caixa = ?
-            ORDER BY c.id_abertura DESC
-            LIMIT 1
-            """;
-
-        try (Connection conn = Conexao.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(
-                    1,
-                    idCaixa
-            );
-
-            try (ResultSet rs =
-                         stmt.executeQuery()) {
-
-                if (rs.next()) {
-
-                    return mapearCaixa(rs);
-                }
-            }
-
-        } catch (SQLException e) {
-
-            e.printStackTrace();
-        }
-
-        return null;
-    }
 
 
     // ============================================================
@@ -280,7 +233,7 @@ public class CaixaDAO {
     // ============================================================
 
     public boolean fechar(
-            int idAbertura,
+            int idTabelaCaixa,
             LocalDateTime dataFechamento,
             BigDecimal valorFechamento) {
 
@@ -290,7 +243,7 @@ public class CaixaDAO {
                 data_fechamento = ?,
                 valor_fechamento = ?,
                 status = 'FECHADO'
-            WHERE id_abertura = ?
+            WHERE id_tabela_caixa = ?
             """;
 
         try (Connection conn = Conexao.getConnection();
@@ -310,7 +263,7 @@ public class CaixaDAO {
 
             stmt.setInt(
                     3,
-                    idAbertura
+                    idTabelaCaixa
             );
 
             return stmt.executeUpdate() > 0;
@@ -340,7 +293,7 @@ public class CaixaDAO {
                 valor_abertura = ?,
                 valor_fechamento = ?,
                 status = ?
-            WHERE id_abertura = ?
+            WHERE id_tabela_caixa = ?
             """;
 
         try (Connection conn = Conexao.getConnection();
@@ -410,10 +363,10 @@ public class CaixaDAO {
                     caixa.getStatus().name()
             );
 
-            // id_abertura
+            // id_tabela_caixa
             stmt.setInt(
                     8,
-                    caixa.getIdAbertura()
+                    caixa.getIdTabelaCaixa()
             );
 
             return stmt.executeUpdate() > 0;
@@ -431,11 +384,11 @@ public class CaixaDAO {
     // EXCLUIR ABERTURA
     // ============================================================
 
-    public boolean excluir(int idAbertura) {
+    public boolean excluir(int idTabelaCaixa) {
 
         String sql = """
             DELETE FROM caixas
-            WHERE id_abertura = ?
+            WHERE id_tabela_caixa = ?
             """;
 
         try (Connection conn = Conexao.getConnection();
@@ -443,7 +396,7 @@ public class CaixaDAO {
 
             stmt.setInt(
                     1,
-                    idAbertura
+                    idTabelaCaixa
             );
 
             return stmt.executeUpdate() > 0;
@@ -472,8 +425,8 @@ public class CaixaDAO {
         // ID DA ABERTURA
         // ========================================================
 
-        caixa.setIdAbertura(
-                rs.getInt("id_abertura")
+        caixa.setIdTabelaCaixa(
+                rs.getInt("id_tabela_caixa")
         );
 
         // ========================================================
@@ -567,4 +520,447 @@ public class CaixaDAO {
 
         return caixa;
     }
+
+
+public ResumoFechamentoCaixa buscarResumoFechamento(
+        int idTabelaCaixa
+) throws SQLException {
+
+    if (idTabelaCaixa <= 0) {
+        throw new SQLException("Sessão de caixa inválida.");
+    }
+
+    ResumoFechamentoCaixa resumo =
+            new ResumoFechamentoCaixa();
+
+    resumo.setIdTabelaCaixa(idTabelaCaixa);
+
+    String sqlCaixa = """
+        SELECT valor_abertura
+        FROM caixas
+        WHERE id_tabela_caixa = ?
+        """;
+
+    String sqlPagamentos = """
+        SELECT
+            fp.nome AS forma_pagamento,
+            COALESCE(SUM(p.valor), 0) AS total
+        FROM pagamentos p
+        INNER JOIN formas_pagamento fp
+            ON fp.id_forma_pagamento = p.id_forma_pagamento
+        INNER JOIN vendas v
+            ON v.id_venda = p.id_venda
+        WHERE p.id_tabela_caixa = ?
+          AND v.id_tabela_caixa = p.id_tabela_caixa
+          AND v.status = 'FINALIZADA'
+        GROUP BY fp.id_forma_pagamento, fp.nome
+        """;
+
+    String sqlQuantidade = """
+        SELECT COUNT(*) AS quantidade
+        FROM vendas
+        WHERE id_tabela_caixa = ?
+          AND status = 'FINALIZADA'
+        """;
+
+    try (Connection conn = Conexao.getConnection()) {
+
+        try (PreparedStatement stmt =
+                     conn.prepareStatement(sqlCaixa)) {
+
+            stmt.setInt(1, idTabelaCaixa);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (!rs.next()) {
+                    throw new SQLException(
+                            "Sessão de caixa não encontrada."
+                    );
+                }
+
+                resumo.setValorAbertura(
+                        rs.getBigDecimal("valor_abertura")
+                );
+            }
+        }
+
+        try (PreparedStatement stmt =
+                     conn.prepareStatement(sqlPagamentos)) {
+
+            stmt.setInt(1, idTabelaCaixa);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                while (rs.next()) {
+
+                    String forma = rs.getString(
+                            "forma_pagamento"
+                    );
+
+                    BigDecimal total = rs.getBigDecimal(
+                            "total"
+                    );
+
+                    switch (forma) {
+
+                        case "DINHEIRO":
+                            resumo.setTotalDinheiro(total);
+                            break;
+
+                        case "PIX":
+                            resumo.setTotalPix(total);
+                            break;
+
+                        case "CARTAO_CREDITO":
+                            resumo.setTotalCredito(total);
+                            break;
+
+                        case "CARTAO_DEBITO":
+                            resumo.setTotalDebito(total);
+                            break;
+
+                        case "PRAZO":
+                            resumo.setTotalPrazo(total);
+                            break;
+
+                        default:
+                            throw new SQLException(
+                                    "Forma de pagamento desconhecida: "
+                                    + forma
+                            );
+                    }
+                }
+            }
+        }
+
+        try (PreparedStatement stmt =
+                     conn.prepareStatement(sqlQuantidade)) {
+
+            stmt.setInt(1, idTabelaCaixa);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+
+                if (rs.next()) {
+                    resumo.setQuantidadeVendas(
+                            rs.getInt("quantidade")
+                    );
+                }
+            }
+        }
+    }
+
+    return resumo;
+}
+
+
+public ResumoFechamentoCaixa fecharComConferencia(
+        int idTabelaCaixa,
+        BigDecimal valorContado,
+        String observacao
+) throws SQLException {
+
+    if (idTabelaCaixa <= 0) {
+        throw new SQLException(
+                "Sessão de caixa inválida."
+        );
+    }
+
+    if (valorContado == null
+            || valorContado.signum() < 0
+            || valorContado.scale() > 2) {
+
+        throw new SQLException(
+                "Valor contado inválido."
+        );
+    }
+
+    if (observacao == null) {
+        observacao = "";
+    }
+
+    if (observacao.length() > 500) {
+        throw new SQLException(
+                "A observação excede 500 caracteres."
+        );
+    }
+
+    String sqlBloqueio = """
+        SELECT status
+        FROM caixas
+        WHERE id_tabela_caixa = ?
+        FOR UPDATE
+        """;
+
+    String sqlFechamento = """
+        UPDATE caixas
+        SET
+            data_fechamento = CURRENT_TIMESTAMP,
+            valor_fechamento = ?,
+            valor_esperado = ?,
+            diferenca = ?,
+            observacao_fechamento = ?,
+            status = 'FECHADO'
+        WHERE id_tabela_caixa = ?
+          AND status = 'ABERTO'
+        """;
+
+    try (Connection conn = Conexao.getConnection()) {
+
+        conn.setAutoCommit(false);
+
+        try {
+
+            // Bloqueia a sessão, impedindo que uma
+            // venda seja finalizada simultaneamente.
+
+            try (PreparedStatement stmt =
+                    conn.prepareStatement(sqlBloqueio)) {
+
+                stmt.setInt(1, idTabelaCaixa);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+
+                    if (!rs.next()) {
+                        throw new SQLException(
+                                "Sessão não encontrada."
+                        );
+                    }
+
+                    if (!"ABERTO".equals(
+                            rs.getString("status"))) {
+
+                        throw new SQLException(
+                                "Este caixa já está fechado."
+                        );
+                    }
+                }
+            }
+
+            // Recalcula os valores usando a mesma
+            // conexão e dentro da transação.
+
+            ResumoFechamentoCaixa resumo =
+                    consultarResumoNaConexao(
+                            conn,
+                            idTabelaCaixa
+                    );
+
+            BigDecimal esperado =
+                    resumo.getDinheiroEsperado();
+
+            BigDecimal diferenca =
+                    valorContado.subtract(esperado);
+
+            try (PreparedStatement stmt =
+                    conn.prepareStatement(sqlFechamento)) {
+
+                stmt.setBigDecimal(
+                        1,
+                        valorContado
+                );
+
+                stmt.setBigDecimal(
+                        2,
+                        esperado
+                );
+
+                stmt.setBigDecimal(
+                        3,
+                        diferenca
+                );
+
+                stmt.setString(
+                        4,
+                        observacao
+                );
+
+                stmt.setInt(
+                        5,
+                        idTabelaCaixa
+                );
+
+                if (stmt.executeUpdate() != 1) {
+                    throw new SQLException(
+                            "Não foi possível encerrar a sessão."
+                    );
+                }
+            }
+
+            conn.commit();
+
+            return resumo;
+
+        } catch (Exception e) {
+
+            try {
+                conn.rollback();
+            } catch (SQLException rollbackErro) {
+                e.addSuppressed(rollbackErro);
+            }
+
+            if (e instanceof SQLException) {
+                throw (SQLException) e;
+            }
+
+            throw new SQLException(
+                    "Erro no fechamento: "
+                            + e.getMessage(),
+                    e
+            );
+
+        } finally {
+            conn.setAutoCommit(true);
+        }
+    }
+}
+
+// =====================================================
+// RESUMO FINANCEIRO NA MESMA CONEXÃO
+// =====================================================
+
+private ResumoFechamentoCaixa consultarResumoNaConexao(
+        Connection conn,
+        int idTabelaCaixa
+) throws SQLException {
+
+    ResumoFechamentoCaixa resumo =
+            new ResumoFechamentoCaixa();
+
+    resumo.setIdTabelaCaixa(idTabelaCaixa);
+
+    String sqlCaixa = """
+        SELECT valor_abertura
+        FROM caixas
+        WHERE id_tabela_caixa = ?
+        """;
+
+    String sqlPagamentos = """
+        SELECT
+            fp.nome AS forma_pagamento,
+            COALESCE(SUM(p.valor), 0) AS total
+        FROM pagamentos p
+        INNER JOIN formas_pagamento fp
+            ON fp.id_forma_pagamento = p.id_forma_pagamento
+        INNER JOIN vendas v
+            ON v.id_venda = p.id_venda
+        WHERE p.id_tabela_caixa = ?
+          AND v.id_tabela_caixa = p.id_tabela_caixa
+          AND v.status = 'FINALIZADA'
+        GROUP BY fp.id_forma_pagamento, fp.nome
+        """;
+
+    String sqlVendas = """
+        SELECT
+            COUNT(*) AS quantidade,
+            COALESCE(SUM(valor_total), 0) AS total
+        FROM vendas
+        WHERE id_tabela_caixa = ?
+          AND status = 'FINALIZADA'
+        """;
+
+    try (PreparedStatement stmt =
+            conn.prepareStatement(sqlCaixa)) {
+
+        stmt.setInt(1, idTabelaCaixa);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            if (!rs.next()) {
+                throw new SQLException(
+                        "Sessão não encontrada."
+                );
+            }
+
+            resumo.setValorAbertura(
+                    rs.getBigDecimal("valor_abertura")
+            );
+        }
+    }
+
+    try (PreparedStatement stmt =
+            conn.prepareStatement(sqlPagamentos)) {
+
+        stmt.setInt(1, idTabelaCaixa);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+
+                String forma =
+                        rs.getString("forma_pagamento");
+
+                BigDecimal total =
+                        rs.getBigDecimal("total");
+
+                switch (forma) {
+
+                    case "DINHEIRO":
+                        resumo.setTotalDinheiro(total);
+                        break;
+
+                    case "PIX":
+                        resumo.setTotalPix(total);
+                        break;
+
+                    case "CARTAO_CREDITO":
+                        resumo.setTotalCredito(total);
+                        break;
+
+                    case "CARTAO_DEBITO":
+                        resumo.setTotalDebito(total);
+                        break;
+
+                    case "PRAZO":
+                        resumo.setTotalPrazo(total);
+                        break;
+
+                    default:
+                        throw new SQLException(
+                                "Forma de pagamento desconhecida: "
+                                        + forma
+                        );
+                }
+            }
+        }
+    }
+
+    BigDecimal totalRegistrado;
+
+    try (PreparedStatement stmt =
+            conn.prepareStatement(sqlVendas)) {
+
+        stmt.setInt(1, idTabelaCaixa);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            rs.next();
+
+            resumo.setQuantidadeVendas(
+                    rs.getInt("quantidade")
+            );
+
+            totalRegistrado =
+                    rs.getBigDecimal("total");
+        }
+    }
+
+    // Verifica se os pagamentos contabilizados
+    // correspondem ao valor das vendas finalizadas.
+
+    if (resumo.getTotalVendas()
+            .compareTo(totalRegistrado) != 0) {
+
+        throw new SQLException(
+                "Divergência entre vendas e pagamentos. "
+                + "Total das vendas: "
+                + totalRegistrado
+                + " | Total dos pagamentos: "
+                + resumo.getTotalVendas()
+        );
+    }
+
+    return resumo;
+}
+
+
 }

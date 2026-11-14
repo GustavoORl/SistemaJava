@@ -165,6 +165,136 @@ public class ProdutoDAO {
                 e.printStackTrace();
             }
         }
+
+
+
+
+public Produto buscarPorCodigoExato(String codigo) {
+
+    String sql = """
+        SELECT *
+        FROM produtos
+        WHERE codigo_barras = ?
+          AND ativo = 1
+        LIMIT 1
+        """;
+
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setString(1, codigo);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return mapearProdutoBusca(rs);
+            }
+        }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return null;
+}
+
+public Produto buscarPorIdExato(int id) {
+
+    String sql = """
+        SELECT *
+        FROM produtos
+        WHERE id_produto = ?
+          AND ativo = 1
+        LIMIT 1
+        """;
+
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        stmt.setInt(1, id);
+
+        try (ResultSet rs = stmt.executeQuery()) {
+            if (rs.next()) {
+                return mapearProdutoBusca(rs);
+            }
+        }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return null;
+}
+
+public List<Produto> buscarSugestoes(String termo) {
+
+    List<Produto> produtos = new ArrayList<>();
+
+    String sql = """
+        SELECT *
+        FROM produtos
+        WHERE ativo = 1
+          AND (
+              nome LIKE ?
+              OR codigo_barras LIKE ?
+              OR CAST(id_produto AS CHAR) LIKE ?
+          )
+        ORDER BY
+          CASE
+            WHEN codigo_barras = ? THEN 0
+            WHEN CAST(id_produto AS CHAR) = ? THEN 1
+            WHEN codigo_barras LIKE ? THEN 2
+            WHEN nome LIKE ? THEN 3
+            ELSE 4
+          END,
+          nome
+        LIMIT 12
+        """;
+
+    try (Connection conn = Conexao.getConnection();
+         PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+        String parcial = "%" + termo + "%";
+
+        stmt.setString(1, parcial);
+        stmt.setString(2, parcial);
+        stmt.setString(3, parcial);
+        stmt.setString(4, termo);
+        stmt.setString(5, termo);
+        stmt.setString(6, termo + "%");
+        stmt.setString(7, termo + "%");
+
+        try (ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                produtos.add(mapearProdutoBusca(rs));
+            }
+        }
+
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+
+    return produtos;
+}
+
+private Produto mapearProdutoBusca(ResultSet rs)
+        throws SQLException {
+
+    Produto produto = new Produto();
+
+    produto.setIdProduto(rs.getInt("id_produto"));
+    produto.setNome(rs.getString("nome"));
+    produto.setDescricao(rs.getString("descricao"));
+    produto.setCodigoBarras(rs.getString("codigo_barras"));
+    produto.setPrecoCusto(rs.getBigDecimal("preco_custo"));
+    produto.setPrecoVenda(rs.getBigDecimal("preco_venda"));
+    produto.setEstoqueMinimo(rs.getInt("estoque_minimo"));
+    produto.setAtivo(rs.getBoolean("ativo"));
+
+    return produto;
+}
+
+
 }
 
 

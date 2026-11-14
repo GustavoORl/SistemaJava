@@ -1,14 +1,21 @@
+
 package view;
 
 import dao.CaixaDAO;
 import model.Caixa;
+import model.ResumoFechamentoCaixa;
+import model.StatusCaixa;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.sql.SQLException;
+import java.text.NumberFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.text.NumberFormat;
 import java.util.Locale;
 
 public class CaixaFechamentoGUI extends JFrame {
@@ -18,9 +25,31 @@ public class CaixaFechamentoGUI extends JFrame {
     // =====================================================
 
     private final Caixa caixa;
+    private final CaixaDAO caixaDAO = new CaixaDAO();
 
-    private final CaixaDAO caixaDAO =
-            new CaixaDAO();
+    private ResumoFechamentoCaixa resumo;
+
+    // =====================================================
+    // CORES
+    // =====================================================
+
+    private static final Color VERDE_ESCURO =
+            new Color(23, 60, 56);
+
+    private static final Color FUNDO =
+            new Color(245, 247, 248);
+
+    private static final Color TEXTO =
+            new Color(30, 30, 30);
+
+    private static final Color CINZA =
+            new Color(100, 100, 100);
+
+    private static final Color VERMELHO =
+            new Color(190, 60, 60);
+
+    private static final Color VERDE =
+            new Color(30, 125, 90);
 
     // =====================================================
     // COMPONENTES
@@ -30,10 +59,25 @@ public class CaixaFechamentoGUI extends JFrame {
     private JLabel lblDataAbertura;
     private JLabel lblValorAbertura;
 
+    private JLabel lblQuantidadeVendas;
+    private JLabel lblTotalVendas;
+
+    private JLabel lblDinheiro;
+    private JLabel lblPix;
+    private JLabel lblCredito;
+    private JLabel lblDebito;
+    private JLabel lblPrazo;
+
+    private JLabel lblDinheiroEsperado;
+    private JLabel lblDiferenca;
+    private JLabel lblSituacao;
+
     private JTextField txtValorFechamento;
+    private JTextArea txtObservacao;
 
     private JButton btnFechar;
     private JButton btnCancelar;
+    private JButton btnAtualizar;
 
     // =====================================================
     // FORMATAÇÃO
@@ -58,27 +102,23 @@ public class CaixaFechamentoGUI extends JFrame {
         this.caixa = caixa;
 
         configurarJanela();
-
         inicializarComponentes();
-
         configurarEventos();
-
         preencherDados();
+        carregarResumo();
     }
 
     // =====================================================
-    // CONFIGURAÇÃO DA JANELA
+    // JANELA
     // =====================================================
 
     private void configurarJanela() {
 
         setTitle("CoStock - Fechamento de Caixa");
 
-        setSize(550, 500);
+        setSize(650, 820);
 
-        setMinimumSize(
-                new Dimension(500, 450)
-        );
+        setMinimumSize(new Dimension(570, 650));
 
         setLocationRelativeTo(null);
 
@@ -96,9 +136,7 @@ public class CaixaFechamentoGUI extends JFrame {
         JPanel painelPrincipal =
                 new JPanel(new BorderLayout());
 
-        painelPrincipal.setBackground(
-                new Color(245, 247, 248)
-        );
+        painelPrincipal.setBackground(FUNDO);
 
         // -------------------------------------------------
         // CABEÇALHO
@@ -107,9 +145,7 @@ public class CaixaFechamentoGUI extends JFrame {
         JPanel cabecalho =
                 new JPanel(new BorderLayout());
 
-        cabecalho.setBackground(
-                new Color(23, 60, 56)
-        );
+        cabecalho.setBackground(VERDE_ESCURO);
 
         cabecalho.setBorder(
                 BorderFactory.createEmptyBorder(
@@ -117,17 +153,12 @@ public class CaixaFechamentoGUI extends JFrame {
                 )
         );
 
-        JLabel titulo =
-                new JLabel(
-                        "CoStock | Fechamento de Caixa"
-                );
+        JLabel titulo = new JLabel(
+                "CoStock | Fechamento de Caixa"
+        );
 
         titulo.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        22
-                )
+                new Font("Arial", Font.BOLD, 22)
         );
 
         titulo.setForeground(Color.WHITE);
@@ -142,135 +173,237 @@ public class CaixaFechamentoGUI extends JFrame {
         // -------------------------------------------------
 
         JPanel painelCentral =
-                new JPanel(
-                        new GridBagLayout()
-                );
+                new JPanel(new GridBagLayout());
 
         painelCentral.setBackground(Color.WHITE);
 
         painelCentral.setBorder(
                 BorderFactory.createEmptyBorder(
-                        25, 30, 25, 30
+                        20, 30, 25, 30
                 )
         );
 
         GridBagConstraints gbc =
                 new GridBagConstraints();
 
-        gbc.insets =
-                new Insets(8, 8, 8, 8);
-
-        gbc.fill =
-                GridBagConstraints.HORIZONTAL;
-
+        gbc.gridx = 0;
+        gbc.gridy = 0;
         gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(5, 5, 5, 5);
 
-        // Operador
-        JLabel tituloOperador =
+        // -------------------------------------------------
+        // DADOS DA ABERTURA
+        // -------------------------------------------------
+
+        adicionarTituloSecao(
+                painelCentral,
+                gbc,
+                "Informações do caixa"
+        );
+
+        lblOperador = criarLabelValor();
+        lblDataAbertura = criarLabelValor();
+        lblValorAbertura = criarLabelValor();
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Operador",
+                lblOperador
+        );
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Data de abertura",
+                lblDataAbertura
+        );
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Valor de abertura",
+                lblValorAbertura
+        );
+
+        adicionarSeparador(painelCentral, gbc);
+
+        // -------------------------------------------------
+        // RESUMO DAS VENDAS
+        // -------------------------------------------------
+
+        adicionarTituloSecao(
+                painelCentral,
+                gbc,
+                "Resumo financeiro"
+        );
+
+        lblQuantidadeVendas = criarLabelValor();
+        lblTotalVendas = criarLabelDestaque();
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Vendas finalizadas",
+                lblQuantidadeVendas
+        );
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Total de vendas",
+                lblTotalVendas
+        );
+
+        adicionarSeparador(painelCentral, gbc);
+
+        // -------------------------------------------------
+        // FORMAS DE PAGAMENTO
+        // -------------------------------------------------
+
+        adicionarTituloSecao(
+                painelCentral,
+                gbc,
+                "Vendas por forma de pagamento"
+        );
+
+        lblDinheiro = criarLabelValor();
+        lblPix = criarLabelValor();
+        lblCredito = criarLabelValor();
+        lblDebito = criarLabelValor();
+        lblPrazo = criarLabelValor();
+
+        adicionarLinha(
+                painelCentral, gbc,
+                "Dinheiro", lblDinheiro
+        );
+
+        adicionarLinha(
+                painelCentral, gbc,
+                "PIX", lblPix
+        );
+
+        adicionarLinha(
+                painelCentral, gbc,
+                "Cartão de crédito", lblCredito
+        );
+
+        adicionarLinha(
+                painelCentral, gbc,
+                "Cartão de débito", lblDebito
+        );
+
+        adicionarLinha(
+                painelCentral, gbc,
+                "A prazo", lblPrazo
+        );
+
+        adicionarSeparador(painelCentral, gbc);
+
+        // -------------------------------------------------
+        // CONFERÊNCIA
+        // -------------------------------------------------
+
+        adicionarTituloSecao(
+                painelCentral,
+                gbc,
+                "Conferência do dinheiro"
+        );
+
+        lblDinheiroEsperado = criarLabelDestaque();
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Dinheiro esperado na gaveta",
+                lblDinheiroEsperado
+        );
+
+        JLabel tituloValorContado =
                 criarLabelTitulo(
-                        "Operador"
+                        "Valor encontrado no caixa (R$)"
                 );
 
-        lblOperador =
-                criarLabelValor();
+        gbc.gridy++;
+        painelCentral.add(
+                tituloValorContado,
+                gbc
+        );
 
-        // Data
-        JLabel tituloData =
-                criarLabelTitulo(
-                        "Data de abertura"
-                );
-
-        lblDataAbertura =
-                criarLabelValor();
-
-        // Valor abertura
-        JLabel tituloValorAbertura =
-                criarLabelTitulo(
-                        "Valor de abertura"
-                );
-
-        lblValorAbertura =
-                criarLabelValor();
-
-        // Valor fechamento
-        JLabel tituloValorFechamento =
-                criarLabelTitulo(
-                        "Valor encontrado no caixa"
-                );
-
-        txtValorFechamento =
-                new JTextField();
+        txtValorFechamento = new JTextField();
 
         txtValorFechamento.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        18
-                )
+                new Font("Arial", Font.PLAIN, 18)
         );
 
         txtValorFechamento.setPreferredSize(
                 new Dimension(250, 42)
         );
 
-        // -------------------------------------------------
-        // ADICIONAR COMPONENTES
-        // -------------------------------------------------
-
-        gbc.gridx = 0;
-        gbc.gridy = 0;
-
-        painelCentral.add(
-                tituloOperador,
-                gbc
-        );
-
         gbc.gridy++;
-
-        painelCentral.add(
-                lblOperador,
-                gbc
-        );
-
-        gbc.gridy++;
-
-        painelCentral.add(
-                tituloData,
-                gbc
-        );
-
-        gbc.gridy++;
-
-        painelCentral.add(
-                lblDataAbertura,
-                gbc
-        );
-
-        gbc.gridy++;
-
-        painelCentral.add(
-                tituloValorAbertura,
-                gbc
-        );
-
-        gbc.gridy++;
-
-        painelCentral.add(
-                lblValorAbertura,
-                gbc
-        );
-
-        gbc.gridy++;
-
-        painelCentral.add(
-                tituloValorFechamento,
-                gbc
-        );
-
-        gbc.gridy++;
-
         painelCentral.add(
                 txtValorFechamento,
+                gbc
+        );
+
+        lblDiferenca = criarLabelDestaque();
+
+        adicionarLinha(
+                painelCentral,
+                gbc,
+                "Diferença apurada",
+                lblDiferenca
+        );
+
+        lblSituacao = criarLabelValor();
+
+        gbc.gridy++;
+        painelCentral.add(
+                lblSituacao,
+                gbc
+        );
+
+        // -------------------------------------------------
+        // OBSERVAÇÃO
+        // -------------------------------------------------
+
+        JLabel tituloObservacao =
+                criarLabelTitulo(
+                        "Observações do fechamento"
+                );
+
+        gbc.gridy++;
+        painelCentral.add(
+                tituloObservacao,
+                gbc
+        );
+
+        txtObservacao = new JTextArea(3, 20);
+
+        txtObservacao.setFont(
+                new Font("Arial", Font.PLAIN, 14)
+        );
+
+        txtObservacao.setLineWrap(true);
+        txtObservacao.setWrapStyleWord(true);
+
+        txtObservacao.setBorder(
+                BorderFactory.createEmptyBorder(
+                        8, 8, 8, 8
+                )
+        );
+
+        JScrollPane scrollObservacao =
+                new JScrollPane(txtObservacao);
+
+        scrollObservacao.setPreferredSize(
+                new Dimension(250, 85)
+        );
+
+        gbc.gridy++;
+        painelCentral.add(
+                scrollObservacao,
                 gbc
         );
 
@@ -278,36 +411,51 @@ public class CaixaFechamentoGUI extends JFrame {
         // RODAPÉ
         // -------------------------------------------------
 
-        JPanel rodape =
-                new JPanel(
-                        new FlowLayout(
-                                FlowLayout.RIGHT,
-                                10,
-                                15
-                        )
-                );
-
-        rodape.setBackground(
-                new Color(245, 247, 248)
+        JPanel rodape = new JPanel(
+                new FlowLayout(
+                        FlowLayout.RIGHT,
+                        10,
+                        15
+                )
         );
 
-        btnCancelar =
-                criarBotao(
-                        "Cancelar",
-                        new Color(100, 100, 100)
-                );
+        rodape.setBackground(FUNDO);
 
-        btnFechar =
-                criarBotao(
-                        "Fechar caixa",
-                        new Color(190, 60, 60)
-                );
+        btnCancelar = criarBotao(
+                "Cancelar",
+                CINZA
+        );
+
+        btnAtualizar = criarBotao(
+                "Atualizar",
+                VERDE_ESCURO
+        );
+
+        btnFechar = criarBotao(
+                "Fechar caixa",
+                VERMELHO
+        );
+
+        btnFechar.setEnabled(false);
 
         rodape.add(btnCancelar);
+        rodape.add(btnAtualizar);
         rodape.add(btnFechar);
 
         // -------------------------------------------------
-        // MONTAR TELA
+        // SCROLL
+        // -------------------------------------------------
+
+        JScrollPane scrollPrincipal =
+                new JScrollPane(painelCentral);
+
+        scrollPrincipal.setBorder(null);
+
+        scrollPrincipal.getVerticalScrollBar()
+                .setUnitIncrement(16);
+
+        // -------------------------------------------------
+        // MONTAGEM
         // -------------------------------------------------
 
         painelPrincipal.add(
@@ -316,7 +464,7 @@ public class CaixaFechamentoGUI extends JFrame {
         );
 
         painelPrincipal.add(
-                painelCentral,
+                scrollPrincipal,
                 BorderLayout.CENTER
         );
 
@@ -325,28 +473,19 @@ public class CaixaFechamentoGUI extends JFrame {
                 BorderLayout.SOUTH
         );
 
-        setContentPane(
-                painelPrincipal
-        );
+        setContentPane(painelPrincipal);
     }
 
     // =====================================================
-    // LABELS
+    // COMPONENTES AUXILIARES
     // =====================================================
 
-    private JLabel criarLabelTitulo(
-            String texto
-    ) {
+    private JLabel criarLabelTitulo(String texto) {
 
-        JLabel label =
-                new JLabel(texto);
+        JLabel label = new JLabel(texto);
 
         label.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        13
-                )
+                new Font("Arial", Font.BOLD, 13)
         );
 
         label.setForeground(
@@ -358,50 +497,44 @@ public class CaixaFechamentoGUI extends JFrame {
 
     private JLabel criarLabelValor() {
 
-        JLabel label =
-                new JLabel();
+        JLabel label = new JLabel("-");
 
         label.setFont(
-                new Font(
-                        "Arial",
-                        Font.PLAIN,
-                        16
-                )
+                new Font("Arial", Font.PLAIN, 16)
         );
 
-        label.setForeground(
-                new Color(30, 30, 30)
-        );
+        label.setForeground(TEXTO);
 
         return label;
     }
 
-    // =====================================================
-    // BOTÃO
-    // =====================================================
+    private JLabel criarLabelDestaque() {
+
+        JLabel label = new JLabel("-");
+
+        label.setFont(
+                new Font("Arial", Font.BOLD, 18)
+        );
+
+        label.setForeground(VERDE_ESCURO);
+
+        return label;
+    }
 
     private JButton criarBotao(
             String texto,
             Color cor
     ) {
 
-        JButton botao =
-                new JButton(texto);
+        JButton botao = new JButton(texto);
 
         botao.setFont(
-                new Font(
-                        "Arial",
-                        Font.BOLD,
-                        13
-                )
+                new Font("Arial", Font.BOLD, 13)
         );
 
         botao.setForeground(Color.WHITE);
-
         botao.setBackground(cor);
-
         botao.setFocusPainted(false);
-
         botao.setBorderPainted(false);
 
         botao.setPreferredSize(
@@ -409,6 +542,74 @@ public class CaixaFechamentoGUI extends JFrame {
         );
 
         return botao;
+    }
+
+    private void adicionarTituloSecao(
+            JPanel painel,
+            GridBagConstraints gbc,
+            String texto
+    ) {
+
+        JLabel titulo = new JLabel(texto);
+
+        titulo.setFont(
+                new Font("Arial", Font.BOLD, 16)
+        );
+
+        titulo.setForeground(VERDE_ESCURO);
+
+        gbc.gridy++;
+        gbc.insets = new Insets(10, 5, 8, 5);
+
+        painel.add(titulo, gbc);
+
+        gbc.insets = new Insets(5, 5, 5, 5);
+    }
+
+    private void adicionarLinha(
+            JPanel painel,
+            GridBagConstraints gbc,
+            String titulo,
+            JLabel valor
+    ) {
+
+        JPanel linha = new JPanel(
+                new BorderLayout(10, 0)
+        );
+
+        linha.setOpaque(false);
+
+        JLabel labelTitulo =
+                criarLabelTitulo(titulo);
+
+        linha.add(
+                labelTitulo,
+                BorderLayout.WEST
+        );
+
+        linha.add(
+                valor,
+                BorderLayout.EAST
+        );
+
+        gbc.gridy++;
+        painel.add(linha, gbc);
+    }
+
+    private void adicionarSeparador(
+            JPanel painel,
+            GridBagConstraints gbc
+    ) {
+
+        gbc.gridy++;
+        gbc.insets = new Insets(12, 5, 12, 5);
+
+        painel.add(
+                new JSeparator(),
+                gbc
+        );
+
+        gbc.insets = new Insets(5, 5, 5, 5);
     }
 
     // =====================================================
@@ -445,7 +646,139 @@ public class CaixaFechamentoGUI extends JFrame {
             );
         }
 
-        txtValorFechamento.requestFocus();
+        SwingUtilities.invokeLater(
+                () -> txtValorFechamento.requestFocusInWindow()
+        );
+    }
+
+    // =====================================================
+    // CARREGAR RESUMO
+    // =====================================================
+
+    private void carregarResumo() {
+
+        if (caixa == null
+                || caixa.getIdTabelaCaixa() <= 0) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Sessão de caixa inválida.",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
+            );
+
+            btnFechar.setEnabled(false);
+            return;
+        }
+
+        btnFechar.setEnabled(false);
+        btnAtualizar.setEnabled(false);
+
+        SwingWorker<ResumoFechamentoCaixa, Void> worker =
+                new SwingWorker<>() {
+
+            @Override
+            protected ResumoFechamentoCaixa doInBackground()
+                    throws Exception {
+
+                return caixaDAO.buscarResumoFechamento(
+                        caixa.getIdTabelaCaixa()
+                );
+            }
+
+            @Override
+            protected void done() {
+
+                btnAtualizar.setEnabled(true);
+
+                try {
+
+                    resumo = get();
+
+                    atualizarResumoTela();
+
+                    btnFechar.setEnabled(true);
+
+                } catch (Exception e) {
+
+                    resumo = null;
+                    btnFechar.setEnabled(false);
+
+                    JOptionPane.showMessageDialog(
+                            CaixaFechamentoGUI.this,
+                            "Erro ao consultar o resumo:\n"
+                                    + e.getMessage(),
+                            "Erro",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                }
+            }
+        };
+
+        worker.execute();
+    }
+
+    private void atualizarResumoTela() {
+
+        if (resumo == null) {
+            return;
+        }
+
+        lblValorAbertura.setText(
+                formatoMoeda.format(
+                        resumo.getValorAbertura()
+                )
+        );
+
+        lblQuantidadeVendas.setText(
+                String.valueOf(
+                        resumo.getQuantidadeVendas()
+                )
+        );
+
+        lblTotalVendas.setText(
+                formatoMoeda.format(
+                        resumo.getTotalVendas()
+                )
+        );
+
+        lblDinheiro.setText(
+                formatoMoeda.format(
+                        resumo.getTotalDinheiro()
+                )
+        );
+
+        lblPix.setText(
+                formatoMoeda.format(
+                        resumo.getTotalPix()
+                )
+        );
+
+        lblCredito.setText(
+                formatoMoeda.format(
+                        resumo.getTotalCredito()
+                )
+        );
+
+        lblDebito.setText(
+                formatoMoeda.format(
+                        resumo.getTotalDebito()
+                )
+        );
+
+        lblPrazo.setText(
+                formatoMoeda.format(
+                        resumo.getTotalPrazo()
+                )
+        );
+
+        lblDinheiroEsperado.setText(
+                formatoMoeda.format(
+                        resumo.getDinheiroEsperado()
+                )
+        );
+
+        atualizarDiferenca();
     }
 
     // =====================================================
@@ -458,9 +791,165 @@ public class CaixaFechamentoGUI extends JFrame {
                 e -> dispose()
         );
 
+        btnAtualizar.addActionListener(
+                e -> carregarResumo()
+        );
+
         btnFechar.addActionListener(
                 e -> fecharCaixa()
         );
+
+        txtValorFechamento.getDocument()
+                .addDocumentListener(
+                        new DocumentListener() {
+
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                atualizarDiferenca();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                atualizarDiferenca();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                atualizarDiferenca();
+            }
+        });
+    }
+
+    // =====================================================
+    // CONVERTER VALOR
+    // =====================================================
+
+    private BigDecimal converterValor(
+            String texto
+    ) {
+
+        if (texto == null
+                || texto.trim().isEmpty()) {
+
+            throw new NumberFormatException(
+                    "Informe o valor encontrado no caixa."
+            );
+        }
+
+        String valor = texto.trim()
+                .replace("R$", "")
+                .replace(" ", "");
+
+        // Formato brasileiro: 1.250,50
+        if (valor.contains(",")) {
+
+            valor = valor.replace(".", "")
+                    .replace(",", ".");
+        }
+
+        BigDecimal resultado =
+                new BigDecimal(valor);
+
+        if (resultado.signum() < 0) {
+
+            throw new NumberFormatException(
+                    "O valor não pode ser negativo."
+            );
+        }
+
+        if (resultado.scale() > 2) {
+
+            throw new NumberFormatException(
+                    "Informe no máximo duas casas decimais."
+            );
+        }
+
+        return resultado.setScale(
+                2,
+                RoundingMode.UNNECESSARY
+        );
+    }
+
+    // =====================================================
+    // ATUALIZAR DIFERENÇA
+    // =====================================================
+
+    private void atualizarDiferenca() {
+
+        if (resumo == null) {
+
+            lblDiferenca.setText("-");
+            lblSituacao.setText(
+                    "Aguardando resumo financeiro."
+            );
+
+            return;
+        }
+
+        try {
+
+            BigDecimal valorContado =
+                    converterValor(
+                            txtValorFechamento.getText()
+                    );
+
+            BigDecimal diferenca =
+                    resumo.calcularDiferenca(
+                            valorContado
+                    );
+
+            lblDiferenca.setText(
+                    formatoMoeda.format(diferenca)
+            );
+
+            int comparacao =
+                    diferenca.compareTo(BigDecimal.ZERO);
+
+            if (comparacao == 0) {
+
+                lblDiferenca.setForeground(VERDE);
+
+                lblSituacao.setText(
+                        "Caixa conferido: valores corretos."
+                );
+
+                lblSituacao.setForeground(VERDE);
+
+            } else if (comparacao < 0) {
+
+                lblDiferenca.setForeground(VERMELHO);
+
+                lblSituacao.setText(
+                        "Falta de dinheiro no caixa."
+                );
+
+                lblSituacao.setForeground(VERMELHO);
+
+            } else {
+
+                lblDiferenca.setForeground(
+                        new Color(170, 110, 20)
+                );
+
+                lblSituacao.setText(
+                        "Sobra de dinheiro no caixa."
+                );
+
+                lblSituacao.setForeground(
+                        new Color(170, 110, 20)
+                );
+            }
+
+        } catch (NumberFormatException e) {
+
+            lblDiferenca.setText("-");
+
+            lblSituacao.setText(
+                    "Informe o dinheiro contado."
+            );
+
+            lblSituacao.setForeground(CINZA);
+        }
     }
 
     // =====================================================
@@ -469,166 +958,164 @@ public class CaixaFechamentoGUI extends JFrame {
 
     private void fecharCaixa() {
 
-        String valorTexto =
-                txtValorFechamento
-                        .getText()
-                        .trim();
-
-        // -------------------------------------------------
-        // VALIDAÇÃO
-        // -------------------------------------------------
-
-        if (valorTexto.isEmpty()) {
+        if (resumo == null) {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Informe o valor encontrado no caixa.",
+                    "Atualize o resumo financeiro.",
                     "Atenção",
                     JOptionPane.WARNING_MESSAGE
             );
 
-            txtValorFechamento.requestFocus();
-
             return;
         }
 
-        // -------------------------------------------------
-        // CONVERTER VALOR
-        // -------------------------------------------------
-
-        BigDecimal valorFechamento;
+        BigDecimal valorContado;
 
         try {
 
-            valorTexto =
-                    valorTexto.replace(",", ".");
-
-            valorFechamento =
-                    new BigDecimal(valorTexto);
+            valorContado = converterValor(
+                    txtValorFechamento.getText()
+            );
 
         } catch (NumberFormatException e) {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Informe um valor válido.\n"
-                    + "Exemplo: 850,00",
+                    e.getMessage(),
                     "Valor inválido",
-                    JOptionPane.ERROR_MESSAGE
+                    JOptionPane.WARNING_MESSAGE
             );
 
-            txtValorFechamento.requestFocus();
-
+            txtValorFechamento.requestFocusInWindow();
             return;
         }
 
-        // -------------------------------------------------
-        // VALOR NEGATIVO
-        // -------------------------------------------------
+        String observacao =
+                txtObservacao.getText().trim();
 
-        if (
-                valorFechamento.compareTo(
-                        BigDecimal.ZERO
-                ) < 0
-        ) {
+        if (observacao.length() > 500) {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "O valor de fechamento não pode ser negativo.",
-                    "Valor inválido",
-                    JOptionPane.ERROR_MESSAGE
+                    "A observação deve ter no máximo 500 caracteres.",
+                    "Atenção",
+                    JOptionPane.WARNING_MESSAGE
             );
-
-            txtValorFechamento.requestFocus();
 
             return;
         }
 
-        // -------------------------------------------------
-        // CONFIRMAÇÃO
-        // -------------------------------------------------
-
-        int resposta =
-                JOptionPane.showConfirmDialog(
-                        this,
-                        "Deseja realmente fechar o caixa?\n\n"
-                        + "Valor de fechamento: "
-                        + formatoMoeda.format(
-                                valorFechamento
-                        ),
-                        "Confirmar fechamento",
-                        JOptionPane.YES_NO_OPTION,
-                        JOptionPane.QUESTION_MESSAGE
+        BigDecimal diferencaPrevia =
+                resumo.calcularDiferenca(
+                        valorContado
                 );
+
+        String mensagem =
+                "Deseja realmente fechar o caixa?\n\n"
+                + "Total de vendas: "
+                + formatoMoeda.format(
+                        resumo.getTotalVendas()
+                )
+                + "\nDinheiro esperado: "
+                + formatoMoeda.format(
+                        resumo.getDinheiroEsperado()
+                )
+                + "\nDinheiro contado: "
+                + formatoMoeda.format(valorContado)
+                + "\nDiferença: "
+                + formatoMoeda.format(diferencaPrevia)
+                + "\n\nEsta operação encerrará a sessão.";
+
+        int resposta = JOptionPane.showConfirmDialog(
+                this,
+                mensagem,
+                "Confirmar fechamento",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE
+        );
 
         if (resposta != JOptionPane.YES_OPTION) {
             return;
         }
 
-        // -------------------------------------------------
-        // FECHAR NO BANCO
-        // -------------------------------------------------
+        btnFechar.setEnabled(false);
+        btnAtualizar.setEnabled(false);
 
-        try {
+        SwingWorker<ResumoFechamentoCaixa, Void> worker =
+                new SwingWorker<>() {
 
-            LocalDateTime agora = LocalDateTime.now();
+            @Override
+            protected ResumoFechamentoCaixa doInBackground()
+                    throws SQLException {
 
-boolean sucesso = caixaDAO.fechar(
-    caixa.getIdAbertura(),
-    agora,
-    valorFechamento
-);
-
-            if (!sucesso) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Não foi possível fechar o caixa.",
-                        "Erro",
-                        JOptionPane.ERROR_MESSAGE
+                return caixaDAO.fecharComConferencia(
+                        caixa.getIdTabelaCaixa(),
+                        valorContado,
+                        observacao
                 );
-
-                return;
             }
 
-            // Atualiza o objeto em memória
-            caixa.setDataFechamento(
-                    LocalDateTime.now()
-            );
+            @Override
+            protected void done() {
 
-            caixa.setValorFechamento(
-                    valorFechamento
-            );
+                try {
 
-            caixa.setStatus(
-                    model.StatusCaixa.FECHADO
-            );
+                    ResumoFechamentoCaixa resumoFinal =
+                            get();
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Caixa fechado com sucesso!",
-                    "Sucesso",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
+                    LocalDateTime agora =
+                            LocalDateTime.now();
 
-            // Volta para o login
-            LoginGUI login =
-                    new LoginGUI();
+                    caixa.setDataFechamento(agora);
+                    caixa.setValorFechamento(valorContado);
+                    caixa.setStatus(StatusCaixa.FECHADO);
 
-            login.setVisible(true);
+                    BigDecimal diferencaFinal =
+                            resumoFinal.calcularDiferenca(
+                                    valorContado
+                            );
 
-            dispose();
+                    JOptionPane.showMessageDialog(
+                            CaixaFechamentoGUI.this,
+                            "Caixa fechado com sucesso!\n\n"
+                            + "Valor esperado: "
+                            + formatoMoeda.format(
+                                    resumoFinal.getDinheiroEsperado()
+                            )
+                            + "\nValor contado: "
+                            + formatoMoeda.format(
+                                    valorContado
+                            )
+                            + "\nDiferença: "
+                            + formatoMoeda.format(
+                                    diferencaFinal
+                            ),
+                            "Fechamento concluído",
+                            JOptionPane.INFORMATION_MESSAGE
+                    );
 
-        } catch (Exception e) {
+                    LoginGUI login = new LoginGUI();
+                    login.setVisible(true);
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao fechar o caixa:\n"
-                    + e.getMessage(),
-                    "Erro",
-                    JOptionPane.ERROR_MESSAGE
-            );
+                    dispose();
 
-            e.printStackTrace();
-        }
+                } catch (Exception e) {
+
+                    btnFechar.setEnabled(true);
+                    btnAtualizar.setEnabled(true);
+
+                    JOptionPane.showMessageDialog(
+                            CaixaFechamentoGUI.this,
+                            "Não foi possível fechar o caixa:\n"
+                                    + e.getMessage(),
+                            "Erro",
+                            JOptionPane.ERROR_MESSAGE
+                    );
+                }
+            }
+        };
+
+        worker.execute();
     }
 }

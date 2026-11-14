@@ -2,8 +2,11 @@
 package view;
 
 import dao.ProdutoDAO;
+import dao.VendaDAO;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -11,25 +14,52 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
 import java.math.BigDecimal;
+import java.sql.SQLException;
 import java.text.NumberFormat;
+import java.time.LocalDateTime;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+
 import javax.swing.BorderFactory;
+import javax.swing.DefaultListCellRenderer;
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingUtilities;
+import javax.swing.SwingWorker;
+import javax.swing.Timer;
+
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
+
 import javax.swing.table.DefaultTableModel;
+
 import model.Caixa;
+import model.Pagamento;
 import model.Produto;
+import model.StatusPagamento;
+import model.StatusVenda;
+import model.TipoFormaPagamento;
 import model.Usuario;
+import model.Venda;
+import model.itemVenda;
 
 public class CaixaGUI extends JFrame {
 
@@ -53,6 +83,18 @@ public class CaixaGUI extends JFrame {
     private JButton btnSair;
 
     // =====================================================
+    // COMPONENTES DA PESQUISA
+    // =====================================================
+
+    private JPopupMenu popupSugestoes;
+    private JList<Produto> listaSugestoes;
+    private DefaultListModel<Produto> modeloSugestoes;
+
+    private Timer timerPesquisa;
+
+    private int versaoPesquisa = 0;
+
+    // =====================================================
     // FORMATAÇÃO DE MOEDA
     // =====================================================
 
@@ -61,52 +103,54 @@ public class CaixaGUI extends JFrame {
                     new Locale("pt", "BR")
             );
 
-// =====================================================
-// USUÁRIO E CAIXA
-// =====================================================
+    // =====================================================
+    // USUÁRIO E CAIXA
+    // =====================================================
 
-private Usuario usuario;
-private Caixa caixa;
+    private Usuario usuario;
+    private Caixa caixa;
 
-// =====================================================
-// DAO E CARRINHO
-// =====================================================
+    // =====================================================
+    // DAO E ITENS DA VENDA
+    // =====================================================
 
-private final ProdutoDAO produtoDAO = new ProdutoDAO();
+    private final ProdutoDAO produtoDAO = new ProdutoDAO();
+    private final VendaDAO vendaDAO = new VendaDAO();
 
-private final List<ItemCarrinho> carrinho =
-        new ArrayList<>();
+    private final List<ItemCarrinho> carrinho =
+            new ArrayList<>();
 
     // =====================================================
     // CONSTRUTOR
     // =====================================================
 
-public CaixaGUI(Usuario usuario, Caixa caixa) {
+    public CaixaGUI(Usuario usuario, Caixa caixa) {
 
-    this.usuario = usuario;
-    this.caixa = caixa;
+        this.usuario = usuario;
+        this.caixa = caixa;
 
-    configurarJanela();
+        configurarJanela();
 
-    inicializarComponentes();
+        inicializarComponentes();
 
-    configurarTela();
-}
+        configurarPesquisaProdutos();
 
-
-// =====================================================
-// CONFIGURAÇÃO DA TELA
-// =====================================================
-
-private void configurarTela() {
-
-    if (usuario != null) {
-
-        lblOperador.setText(
-                "Operador: " + usuario.getNome()
-        );
+        configurarTela();
     }
-}
+
+    // =====================================================
+    // CONFIGURAÇÃO DA TELA
+    // =====================================================
+
+    private void configurarTela() {
+
+        if (usuario != null) {
+
+            lblOperador.setText(
+                    "Operador: " + usuario.getNome()
+            );
+        }
+    }
 
     // =====================================================
     // CONFIGURAÇÃO DA JANELA
@@ -138,10 +182,8 @@ private void configurarTela() {
                 new Color(245, 247, 248)
         );
 
-        // Cabeçalho
         JPanel painelCabecalho = criarCabecalho();
 
-        // Área central
         JPanel painelCentral =
                 new JPanel(new BorderLayout(10, 10));
 
@@ -169,7 +211,6 @@ private void configurarTela() {
                 BorderLayout.CENTER
         );
 
-        // Rodapé
         JPanel painelRodape = criarRodape();
 
         painelPrincipal.add(
@@ -268,7 +309,6 @@ private void configurarTela() {
 
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
-        // Rótulo da busca
         JLabel lblBusca =
                 new JLabel("Código, ID ou nome do produto");
 
@@ -276,7 +316,6 @@ private void configurarTela() {
                 new Font("Arial", Font.BOLD, 14)
         );
 
-        // Campo de busca
         txtBusca = new JTextField();
 
         txtBusca.setFont(
@@ -287,7 +326,6 @@ private void configurarTela() {
                 new Dimension(300, 40)
         );
 
-        // Rótulo da quantidade
         JLabel lblQuantidade =
                 new JLabel("Quantidade");
 
@@ -295,7 +333,6 @@ private void configurarTela() {
                 new Font("Arial", Font.BOLD, 14)
         );
 
-        // Campo da quantidade
         txtQuantidade = new JTextField("1");
 
         txtQuantidade.setFont(
@@ -306,13 +343,11 @@ private void configurarTela() {
                 new Dimension(100, 40)
         );
 
-        // Botão adicionar
         btnAdicionar = criarBotao(
                 "Adicionar produto",
                 new Color(20, 125, 100)
         );
 
-        // Primeira linha: rótulos
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.weightx = 1;
@@ -324,7 +359,6 @@ private void configurarTela() {
 
         painel.add(lblQuantidade, gbc);
 
-        // Segunda linha: campos
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.weightx = 1;
@@ -342,13 +376,12 @@ private void configurarTela() {
 
         painel.add(btnAdicionar, gbc);
 
-        // Eventos
         btnAdicionar.addActionListener(
                 e -> adicionarProduto()
         );
 
         txtBusca.addActionListener(
-                e -> adicionarProduto()
+                e -> confirmarPesquisa()
         );
 
         txtQuantidade.addActionListener(
@@ -356,6 +389,481 @@ private void configurarTela() {
         );
 
         return painel;
+    }
+
+    // =====================================================
+    // CONFIGURAR SUGESTÕES DE PESQUISA
+    // =====================================================
+
+    private void configurarPesquisaProdutos() {
+
+        modeloSugestoes = new DefaultListModel<>();
+
+        listaSugestoes = new JList<>(modeloSugestoes);
+
+        listaSugestoes.setSelectionMode(
+                ListSelectionModel.SINGLE_SELECTION
+        );
+
+        listaSugestoes.setFixedCellHeight(42);
+
+        listaSugestoes.setFont(
+                new Font("Arial", Font.PLAIN, 13)
+        );
+
+        listaSugestoes.setCellRenderer(
+                new DefaultListCellRenderer() {
+
+                    @Override
+                    public Component getListCellRendererComponent(
+                            JList<?> list,
+                            Object value,
+                            int index,
+                            boolean isSelected,
+                            boolean cellHasFocus
+                    ) {
+
+                        JLabel label = (JLabel) super
+                                .getListCellRendererComponent(
+                                        list,
+                                        value,
+                                        index,
+                                        isSelected,
+                                        cellHasFocus
+                                );
+
+                        if (value instanceof Produto) {
+
+                            Produto produto = (Produto) value;
+
+                            String codigo =
+                                    produto.getCodigoBarras();
+
+                            if (codigo == null
+                                    || codigo.isBlank()) {
+
+                                codigo = String.valueOf(
+                                        produto.getIdProduto()
+                                );
+                            }
+
+                            label.setText(
+                                    produto.getNome()
+                                    + "  |  Código: "
+                                    + codigo
+                                    + "  |  "
+                                    + formatoMoeda.format(
+                                            produto.getPrecoVenda()
+                                    )
+                            );
+                        }
+
+                        label.setBorder(
+                                BorderFactory.createEmptyBorder(
+                                        0, 10, 0, 10
+                                )
+                        );
+
+                        if (isSelected) {
+
+                            label.setBackground(
+                                    new Color(220, 240, 233)
+                            );
+
+                            label.setForeground(
+                                    new Color(23, 60, 56)
+                            );
+                        }
+
+                        return label;
+                    }
+                }
+        );
+
+        // O popup não poderá receber foco automaticamente.
+        popupSugestoes = new JPopupMenu();
+
+        popupSugestoes.setFocusable(false);
+
+        popupSugestoes.setRequestFocusEnabled(false);
+
+        popupSugestoes.setBorder(
+                BorderFactory.createLineBorder(
+                        new Color(210, 220, 215)
+                )
+        );
+
+        // A lista também não recebe foco ao aparecer.
+        listaSugestoes.setFocusable(false);
+
+        listaSugestoes.setRequestFocusEnabled(false);
+
+        JScrollPane scrollSugestoes =
+                new JScrollPane(listaSugestoes);
+
+        scrollSugestoes.setFocusable(false);
+
+        scrollSugestoes.setRequestFocusEnabled(false);
+
+        scrollSugestoes.setBorder(null);
+
+        scrollSugestoes.setPreferredSize(
+                new Dimension(500, 210)
+        );
+
+        popupSugestoes.add(scrollSugestoes);
+
+        timerPesquisa = new Timer(
+                250,
+                e -> carregarSugestoes()
+        );
+
+        timerPesquisa.setRepeats(false);
+
+        txtBusca.getDocument().addDocumentListener(
+                new DocumentListener() {
+
+                    @Override
+                    public void insertUpdate(DocumentEvent e) {
+                        agendarPesquisa();
+                    }
+
+                    @Override
+                    public void removeUpdate(DocumentEvent e) {
+                        agendarPesquisa();
+                    }
+
+                    @Override
+                    public void changedUpdate(DocumentEvent e) {
+                        agendarPesquisa();
+                    }
+                }
+        );
+
+        // O foco permanece sempre no campo de pesquisa.
+        txtBusca.addKeyListener(
+                new KeyAdapter() {
+
+                    @Override
+                    public void keyPressed(KeyEvent e) {
+
+                        if (e.getKeyCode() == KeyEvent.VK_DOWN
+                                && popupSugestoes.isVisible()) {
+
+                            moverSelecaoSugestao(1);
+
+                            e.consume();
+                        }
+
+                        if (e.getKeyCode() == KeyEvent.VK_UP
+                                && popupSugestoes.isVisible()) {
+
+                            moverSelecaoSugestao(-1);
+
+                            e.consume();
+                        }
+
+                        if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
+
+                            cancelarSugestoes();
+
+                            e.consume();
+                        }
+                    }
+                }
+        );
+
+        // Seleção por clique duplo.
+        listaSugestoes.addMouseListener(
+                new MouseAdapter() {
+
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+
+                        if (e.getClickCount() == 2) {
+
+                            int indice =
+                                    listaSugestoes.locationToIndex(
+                                            e.getPoint()
+                                    );
+
+                            if (indice >= 0) {
+
+                                listaSugestoes.setSelectedIndex(
+                                        indice
+                                );
+
+                                selecionarSugestao();
+                            }
+                        }
+                    }
+                }
+        );
+    }
+
+    // =====================================================
+    // MOVER SELEÇÃO SEM TIRAR O FOCO DA PESQUISA
+    // =====================================================
+
+    private void moverSelecaoSugestao(int direcao) {
+
+        if (modeloSugestoes.isEmpty()) {
+            return;
+        }
+
+        int indiceAtual =
+                listaSugestoes.getSelectedIndex();
+
+        int novoIndice;
+
+        if (indiceAtual == -1) {
+
+            novoIndice = direcao > 0
+                    ? 0
+                    : modeloSugestoes.size() - 1;
+
+        } else {
+
+            novoIndice = indiceAtual + direcao;
+
+            if (novoIndice < 0) {
+                novoIndice = 0;
+            }
+
+            if (novoIndice >= modeloSugestoes.size()) {
+                novoIndice = modeloSugestoes.size() - 1;
+            }
+        }
+
+        listaSugestoes.setSelectedIndex(novoIndice);
+
+        listaSugestoes.ensureIndexIsVisible(novoIndice);
+
+        // Não chamamos requestFocus na lista.
+    }
+
+    // =====================================================
+    // AGENDAR PESQUISA
+    // =====================================================
+
+    private void agendarPesquisa() {
+
+        versaoPesquisa++;
+
+        timerPesquisa.stop();
+
+        String texto = txtBusca.getText().trim();
+
+        if (texto.isEmpty()) {
+
+            modeloSugestoes.clear();
+
+            popupSugestoes.setVisible(false);
+
+            return;
+        }
+
+        timerPesquisa.restart();
+    }
+
+    // =====================================================
+    // CARREGAR SUGESTÕES
+    // =====================================================
+
+    private void carregarSugestoes() {
+
+        String termo = txtBusca.getText().trim();
+
+        if (termo.isEmpty()) {
+            return;
+        }
+
+        final int versaoAtual = versaoPesquisa;
+
+        SwingWorker<List<Produto>, Void> worker =
+                new SwingWorker<List<Produto>, Void>() {
+
+                    @Override
+                    protected List<Produto> doInBackground() {
+
+                        return produtoDAO.buscarSugestoes(termo);
+                    }
+
+                    @Override
+                    protected void done() {
+
+                        try {
+
+                            if (versaoAtual != versaoPesquisa) {
+                                return;
+                            }
+
+                            if (!termo.equals(
+                                    txtBusca.getText().trim()
+                            )) {
+                                return;
+                            }
+
+                            List<Produto> produtos = get();
+
+                            modeloSugestoes.clear();
+
+                            for (Produto produto : produtos) {
+
+                                modeloSugestoes.addElement(produto);
+                            }
+
+                            if (modeloSugestoes.isEmpty()) {
+
+                                popupSugestoes.setVisible(false);
+
+                                return;
+                            }
+
+                            int largura = Math.max(
+                                    txtBusca.getWidth(),
+                                    500
+                            );
+
+                            popupSugestoes.setPopupSize(
+                                    largura,
+                                    Math.min(
+                                            230,
+                                            produtos.size() * 42 + 12
+                                    )
+                            );
+
+                            if (txtBusca.isShowing()
+                                    && txtBusca.hasFocus()) {
+
+                                if (!popupSugestoes.isVisible()) {
+
+                                    popupSugestoes.show(
+                                            txtBusca,
+                                            0,
+                                            txtBusca.getHeight()
+                                    );
+                                }
+                            }
+
+                        } catch (Exception e) {
+
+                            e.printStackTrace();
+
+                            popupSugestoes.setVisible(false);
+                        }
+                    }
+                };
+
+        worker.execute();
+    }
+
+    // =====================================================
+    // SELECIONAR SUGESTÃO
+    // =====================================================
+
+    private void selecionarSugestao() {
+
+        Produto selecionado =
+                listaSugestoes.getSelectedValue();
+
+        if (selecionado == null) {
+            return;
+        }
+
+        cancelarSugestoes();
+
+        adicionarProdutoEncontrado(selecionado);
+    }
+
+    // =====================================================
+    // CANCELAR SUGESTÕES
+    // =====================================================
+
+    private void cancelarSugestoes() {
+
+        versaoPesquisa++;
+
+        timerPesquisa.stop();
+
+        popupSugestoes.setVisible(false);
+
+        modeloSugestoes.clear();
+    }
+
+    // =====================================================
+    // CONFIRMAR PESQUISA
+    // =====================================================
+
+    private void confirmarPesquisa() {
+
+        String busca = txtBusca.getText().trim();
+
+        if (busca.isEmpty()) {
+            return;
+        }
+
+        // Um código exato sempre tem prioridade.
+        Produto produtoExato =
+                buscarProdutoExato(busca);
+
+        if (produtoExato != null) {
+
+            cancelarSugestoes();
+
+            adicionarProdutoEncontrado(produtoExato);
+
+            return;
+        }
+
+        // Se o operador navegou pelas sugestões
+        // usando as setas, Enter seleciona o item.
+        if (popupSugestoes.isVisible()
+                && listaSugestoes.getSelectedIndex() >= 0) {
+
+            selecionarSugestao();
+
+            return;
+        }
+
+        adicionarProduto();
+    }
+
+    // =====================================================
+    // BUSCAR PRODUTO EXATO
+    // =====================================================
+
+    private Produto buscarProdutoExato(String busca) {
+
+        if (busca == null || busca.trim().isEmpty()) {
+            return null;
+        }
+
+        String termo = busca.trim();
+
+        Produto produto =
+                produtoDAO.buscarPorCodigoExato(termo);
+
+        if (produto != null && produto.isAtivo()) {
+            return produto;
+        }
+
+        try {
+
+            int id = Integer.parseInt(termo);
+
+            produto = produtoDAO.buscarPorIdExato(id);
+
+            if (produto != null && produto.isAtivo()) {
+                return produto;
+            }
+
+        } catch (NumberFormatException e) {
+
+            // O texto não é um ID numérico.
+        }
+
+        return null;
     }
 
     // =====================================================
@@ -387,7 +895,6 @@ private void configurarTela() {
                 new Font("Arial", Font.BOLD, 18)
         );
 
-        // Colunas da tabela
         String[] colunas = {
             "Código",
             "Produto",
@@ -400,6 +907,7 @@ private void configurarTela() {
                 colunas,
                 0
         ) {
+
             @Override
             public boolean isCellEditable(
                     int row,
@@ -433,7 +941,6 @@ private void configurarTela() {
         JScrollPane scroll =
                 new JScrollPane(tabelaCarrinho);
 
-        // Total
         lblTotal = new JLabel(
                 formatoMoeda.format(BigDecimal.ZERO)
         );
@@ -540,11 +1047,10 @@ private void configurarTela() {
         );
 
         btnSair = criarBotao(
-    "Fechar caixa",
-    new Color(190, 60, 60)
-);
+                "Fechar caixa",
+                new Color(190, 60, 60)
+        );
 
-        // Eventos dos botões
         btnRemover.addActionListener(
                 e -> removerItem()
         );
@@ -609,22 +1115,65 @@ private void configurarTela() {
     }
 
     // =====================================================
-    // ADICIONAR PRODUTO AO CARRINHO
+    // ADICIONAR PRODUTO
     // =====================================================
 
     private void adicionarProduto() {
 
-        String busca =
-                txtBusca.getText().trim();
+        String busca = txtBusca.getText().trim();
 
         if (busca.isEmpty()) {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Digite o código, ID ou nome do produto."
+                    "Digite o código, ID ou nome do produto.",
+                    "Atenção",
+                    JOptionPane.WARNING_MESSAGE
             );
 
-            txtBusca.requestFocus();
+            txtBusca.requestFocusInWindow();
+
+            return;
+        }
+
+        cancelarSugestoes();
+
+        Produto produtoEncontrado =
+                buscarProduto(busca);
+
+        if (produtoEncontrado == null) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Produto não encontrado.\n"
+                    + "Verifique o código ou selecione "
+                    + "uma sugestão pelo nome.",
+                    "Produto não encontrado",
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            txtBusca.requestFocusInWindow();
+
+            return;
+        }
+
+        adicionarProdutoEncontrado(produtoEncontrado);
+    }
+
+    // =====================================================
+    // ADICIONAR PRODUTO IDENTIFICADO
+    // =====================================================
+
+    private void adicionarProdutoEncontrado(Produto produto) {
+
+        if (produto == null || !produto.isAtivo()) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Produto não encontrado ou inativo.",
+                    "Atenção",
+                    JOptionPane.WARNING_MESSAGE
+            );
 
             return;
         }
@@ -641,8 +1190,12 @@ private void configurarTela() {
 
                 JOptionPane.showMessageDialog(
                         this,
-                        "A quantidade deve ser maior que zero."
+                        "A quantidade deve ser maior que zero.",
+                        "Quantidade inválida",
+                        JOptionPane.WARNING_MESSAGE
                 );
+
+                txtQuantidade.requestFocusInWindow();
 
                 return;
             }
@@ -651,37 +1204,22 @@ private void configurarTela() {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Digite uma quantidade inteira válida."
-            );
-
-            return;
-        }
-
-        // Consulta o produto no banco
-        Produto produtoEncontrado =
-                buscarProduto(busca);
-
-        if (produtoEncontrado == null) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Produto não encontrado ou inativo.",
-                    "Atenção",
+                    "Digite uma quantidade inteira válida.",
+                    "Quantidade inválida",
                     JOptionPane.WARNING_MESSAGE
             );
 
-            txtBusca.requestFocus();
+            txtQuantidade.requestFocusInWindow();
 
             return;
         }
 
-        // Verifica se o produto já está no carrinho
         ItemCarrinho itemExistente = null;
 
         for (ItemCarrinho item : carrinho) {
 
             if (item.getProduto().getIdProduto()
-                    == produtoEncontrado.getIdProduto()) {
+                    == produto.getIdProduto()) {
 
                 itemExistente = item;
 
@@ -691,7 +1229,6 @@ private void configurarTela() {
 
         if (itemExistente != null) {
 
-            // Soma a quantidade
             itemExistente.setQuantidade(
                     itemExistente.getQuantidade()
                     + quantidade
@@ -699,52 +1236,59 @@ private void configurarTela() {
 
         } else {
 
-            // Cria um novo item
-            ItemCarrinho novoItem =
+            carrinho.add(
                     new ItemCarrinho(
-                            produtoEncontrado,
+                            produto,
                             quantidade
-                    );
-
-            carrinho.add(novoItem);
+                    )
+            );
         }
 
         atualizarTabela();
 
-        // Limpa os campos
+        cancelarSugestoes();
+
         txtBusca.setText("");
 
         txtQuantidade.setText("1");
 
-        txtBusca.requestFocus();
+        txtBusca.requestFocusInWindow();
     }
 
     // =====================================================
-    // BUSCAR PRODUTO NO BANCO
+    // BUSCAR PRODUTO
     // =====================================================
 
     private Produto buscarProduto(String busca) {
 
-        // Primeiro tenta localizar pelo ID
-        try {
-
-            int id = Integer.parseInt(busca);
-
-            Produto produto =
-                    produtoDAO.buscarPorCodigoOuNome(busca);
-
-            if (produto != null && produto.isAtivo()) {
-                return produto;
-            }
-
-        } catch (NumberFormatException e) {
-
-            // Se não for um número inteiro,
-            // continua a busca por código ou nome.
+        if (busca == null || busca.trim().isEmpty()) {
+            return null;
         }
 
-        // Busca pelo código de barras ou nome
-        return produtoDAO.buscarPorCodigoOuNome(busca);
+        String termo = busca.trim();
+
+        // Código de barras ou ID exato.
+        Produto produto = buscarProdutoExato(termo);
+
+        if (produto != null) {
+            return produto;
+        }
+
+        // Busca parcial: só retorna automaticamente
+        // se houver um único produto correspondente.
+        List<Produto> encontrados =
+                produtoDAO.buscarSugestoes(termo);
+
+        if (encontrados.size() == 1) {
+
+            Produto encontrado = encontrados.get(0);
+
+            if (encontrado.isAtivo()) {
+                return encontrado;
+            }
+        }
+
+        return null;
     }
 
     // =====================================================
@@ -763,8 +1307,18 @@ private void configurarTela() {
             BigDecimal subtotal =
                     item.getSubtotal();
 
+            String codigo =
+                    produto.getCodigoBarras();
+
+            if (codigo == null || codigo.isBlank()) {
+
+                codigo = String.valueOf(
+                        produto.getIdProduto()
+                );
+            }
+
             Object[] linha = {
-                produto.getIdProduto(),
+                codigo,
                 produto.getNome(),
                 item.getQuantidade(),
                 formatoMoeda.format(
@@ -829,7 +1383,6 @@ private void configurarTela() {
             return;
         }
 
-        // Converte o índice da tabela para o modelo
         int linhaModelo =
                 tabelaCarrinho.convertRowIndexToModel(
                         linhaSelecionada
@@ -864,11 +1417,13 @@ private void configurarTela() {
 
             atualizarTabela();
 
+            cancelarSugestoes();
+
             txtBusca.setText("");
 
             txtQuantidade.setText("1");
 
-            txtBusca.requestFocus();
+            txtBusca.requestFocusInWindow();
         }
     }
 
@@ -882,7 +1437,22 @@ private void configurarTela() {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Adicione pelo menos um produto à venda."
+                    "Adicione pelo menos um produto à venda.",
+                    "Carrinho vazio",
+                    JOptionPane.WARNING_MESSAGE
+            );
+
+            return;
+        }
+
+        if (usuario == null || caixa == null
+                || caixa.getIdTabelaCaixa() <= 0) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Usuário ou sessão de caixa inválidos.",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
             );
 
             return;
@@ -897,11 +1467,10 @@ private void configurarTela() {
             "Cartão de crédito"
         };
 
-        String formaPagamento =
+        String formaSelecionada =
                 (String) JOptionPane.showInputDialog(
                         this,
-                        "Total: "
-                        + formatoMoeda.format(total)
+                        "Total: " + formatoMoeda.format(total)
                         + "\n\nSelecione a forma de pagamento:",
                         "Finalizar venda",
                         JOptionPane.QUESTION_MESSAGE,
@@ -910,35 +1479,167 @@ private void configurarTela() {
                         formasPagamento[0]
                 );
 
-        if (formaPagamento == null) {
+        if (formaSelecionada == null) {
             return;
         }
 
-        // Nesta etapa, apenas simulamos a confirmação.
-        // Posteriormente será conectado ao VendaDAO
-        // e ao PagamentoDAO.
+        TipoFormaPagamento tipoPagamento;
 
-        JOptionPane.showMessageDialog(
+        switch (formaSelecionada) {
+
+            case "Dinheiro":
+                tipoPagamento = TipoFormaPagamento.DINHEIRO;
+                break;
+
+            case "Pix":
+                tipoPagamento = TipoFormaPagamento.PIX;
+                break;
+
+            case "Cartão de débito":
+                tipoPagamento = TipoFormaPagamento.CARTAO_DEBITO;
+                break;
+
+            case "Cartão de crédito":
+                tipoPagamento = TipoFormaPagamento.CARTAO_CREDITO;
+                break;
+
+            default:
+
+                JOptionPane.showMessageDialog(
+                        this,
+                        "Forma de pagamento inválida."
+                );
+
+                return;
+        }
+
+        int resposta = JOptionPane.showConfirmDialog(
                 this,
-                "Venda registrada na simulação!\n\n"
-                + "Total: "
-                + formatoMoeda.format(total)
-                + "\nForma de pagamento: "
-                + formaPagamento,
-                "Venda concluída",
-                JOptionPane.INFORMATION_MESSAGE
+                "Confirma a venda?\n\n"
+                + "Total: " + formatoMoeda.format(total)
+                + "\nPagamento: " + formaSelecionada
+                + "\nCaixa: " + caixa.getIdCaixa(),
+                "Confirmar venda",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
         );
 
-        // Limpa o carrinho após a simulação
-        carrinho.clear();
+        if (resposta != JOptionPane.YES_OPTION) {
+            return;
+        }
 
-        atualizarTabela();
+        Venda venda = new Venda();
 
-        txtBusca.setText("");
+        venda.setUsuario(usuario);
+        venda.setCaixa(caixa);
+        venda.setDataVenda(LocalDateTime.now());
+        venda.setStatus(StatusVenda.FINALIZADA);
+        venda.setValorTotal(total);
 
-        txtQuantidade.setText("1");
+        List<itemVenda> itensVenda = new ArrayList<>();
 
-        txtBusca.requestFocus();
+        for (ItemCarrinho itemCarrinho : carrinho) {
+
+            itemVenda item = new itemVenda();
+
+            item.setVenda(venda);
+
+            item.setProduto(
+                    itemCarrinho.getProduto()
+            );
+
+            item.setQuantidade(
+                    BigDecimal.valueOf(
+                            itemCarrinho.getQuantidade()
+                    )
+            );
+
+            item.setPrecoUnitario(
+                    itemCarrinho.getProduto().getPrecoVenda()
+            );
+
+            item.setDesconto(BigDecimal.ZERO);
+
+            item.setSubtotal(
+                    itemCarrinho.getSubtotal()
+            );
+
+            itensVenda.add(item);
+        }
+
+        venda.setItens(itensVenda);
+
+        Pagamento pagamento = new Pagamento();
+
+        pagamento.setVenda(venda);
+
+        pagamento.setValor(total);
+
+        pagamento.setDataPagamento(
+                LocalDateTime.now()
+        );
+
+        pagamento.setTipoFormaPagamento(
+                tipoPagamento
+        );
+
+        pagamento.setStatus(
+                StatusPagamento.APROVADO
+        );
+
+        List<Pagamento> pagamentos =
+                new ArrayList<>();
+
+        pagamentos.add(pagamento);
+
+        venda.setPagamentos(pagamentos);
+
+        btnFinalizar.setEnabled(false);
+
+        try {
+
+            int idVenda =
+                    vendaDAO.finalizarVenda(venda);
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Venda finalizada com sucesso!\n\n"
+                    + "Número da venda: " + idVenda
+                    + "\nTotal: " + formatoMoeda.format(total)
+                    + "\nPagamento: " + formaSelecionada
+                    + "\nCaixa: " + caixa.getIdCaixa(),
+                    "Venda concluída",
+                    JOptionPane.INFORMATION_MESSAGE
+            );
+
+            carrinho.clear();
+
+            atualizarTabela();
+
+            cancelarSugestoes();
+
+            txtBusca.setText("");
+
+            txtQuantidade.setText("1");
+
+            txtBusca.requestFocusInWindow();
+
+        } catch (SQLException e) {
+
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Não foi possível finalizar a venda.\n\n"
+                    + e.getMessage(),
+                    "Erro na venda",
+                    JOptionPane.ERROR_MESSAGE
+            );
+
+            e.printStackTrace();
+
+        } finally {
+
+            btnFinalizar.setEnabled(true);
+        }
     }
 
     // =====================================================
@@ -1006,28 +1707,29 @@ private void configurarTela() {
         }
     }
 
+    // =====================================================
+    // ABRIR FECHAMENTO DO CAIXA
+    // =====================================================
 
-private void abrirFechamento() {
+    private void abrirFechamento() {
 
-    if (caixa == null) {
+        if (caixa == null) {
 
-        JOptionPane.showMessageDialog(
-                this,
-                "Nenhum caixa está associado a esta sessão.",
-                "Erro",
-                JOptionPane.ERROR_MESSAGE
-        );
+            JOptionPane.showMessageDialog(
+                    this,
+                    "Nenhum caixa está associado a esta sessão.",
+                    "Erro",
+                    JOptionPane.ERROR_MESSAGE
+            );
 
-        return;
+            return;
+        }
+
+        CaixaFechamentoGUI tela =
+                new CaixaFechamentoGUI(caixa);
+
+        tela.setVisible(true);
+
+        dispose();
     }
-
-    CaixaFechamentoGUI tela =
-            new CaixaFechamentoGUI(caixa);
-
-    tela.setVisible(true);
-
-    dispose();
-}
-
-    
 }

@@ -7,6 +7,13 @@
       "name": "LoginGUI",
       "request": "launch",
       "mainClass": "view.LoginGUI",
+      "projectName": "SistemaJava_22cbaa8"
+    },
+    {
+      "type": "java",
+      "name": "LoginGUI",
+      "request": "launch",
+      "mainClass": "view.LoginGUI",
       "projectName": "SistemaJava_58024b4c"
     },
     {

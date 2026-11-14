@@ -1,10 +1,6 @@
 package view;
 
 import dao.CaixaDAO;
-import model.Caixa;
-import model.StatusCaixa;
-import model.Usuario;
-
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Cursor;
@@ -14,11 +10,9 @@ import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
-
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -27,6 +21,9 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
+import model.Caixa;
+import model.StatusCaixa;
+import model.Usuario;
 
 public class CaixaAberturaGUI extends JFrame {
 
@@ -460,234 +457,218 @@ public class CaixaAberturaGUI extends JFrame {
     // ABRIR CAIXA
     // =====================================================
 
-    private void abrirCaixa() {
 
-        // ---------------------------------------------
-        // IDENTIFICADOR DO CAIXA
-        // ---------------------------------------------
+private void abrirCaixa() {
 
-        String caixaTexto =
-                txtCaixa
-                        .getText()
-                        .trim();
+    // ---------------------------------------------
+    // IDENTIFICADOR DO CAIXA
+    // ---------------------------------------------
 
-        if (caixaTexto.isEmpty()) {
+    String caixaTexto = txtCaixa.getText().trim();
+
+    if (caixaTexto.isEmpty()) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Informe o identificador do caixa.",
+                "Atenção",
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        txtCaixa.requestFocus();
+        return;
+    }
+
+    // Padroniza o identificador do caixa.
+    // Exemplo: "cx01" e "CX01" serão tratados igualmente.
+    caixaTexto = caixaTexto.toUpperCase(java.util.Locale.ROOT);
+
+    // ---------------------------------------------
+    // VALOR DE ABERTURA
+    // ---------------------------------------------
+
+    String valorTexto = txtValorAbertura.getText().trim();
+
+    if (valorTexto.isEmpty()) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Informe o valor de abertura do caixa.",
+                "Atenção",
+                JOptionPane.WARNING_MESSAGE
+        );
+
+        txtValorAbertura.requestFocus();
+        return;
+    }
+
+    // ---------------------------------------------
+    // CONVERTER VALOR
+    // ---------------------------------------------
+
+    BigDecimal valorAbertura;
+
+    try {
+
+        // Aceita exemplos: 100,00 e 100.00
+        valorTexto = valorTexto.replace(",", ".");
+
+        valorAbertura = new BigDecimal(valorTexto);
+
+        // Valores monetários com duas casas decimais.
+        valorAbertura = valorAbertura.setScale(
+                2,
+                java.math.RoundingMode.UNNECESSARY
+        );
+
+    } catch (NumberFormatException | ArithmeticException e) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Informe um valor monetário válido.\n"
+                + "Exemplo: 100,00",
+                "Valor inválido",
+                JOptionPane.ERROR_MESSAGE
+        );
+
+        txtValorAbertura.requestFocus();
+        return;
+    }
+
+    // ---------------------------------------------
+    // VALIDAR VALOR NEGATIVO
+    // ---------------------------------------------
+
+    if (valorAbertura.compareTo(BigDecimal.ZERO) < 0) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                "O valor de abertura não pode ser negativo.",
+                "Valor inválido",
+                JOptionPane.ERROR_MESSAGE
+        );
+
+        txtValorAbertura.requestFocus();
+        return;
+    }
+
+    // ---------------------------------------------
+    // VERIFICAR CAIXA ABERTO
+    // ---------------------------------------------
+
+    try {
+
+        // Consulta apenas o caixa físico informado.
+        Caixa caixaAberto = caixaDAO.buscarCaixaAberto(caixaTexto);
+
+        if (caixaAberto != null) {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Informe o identificador do caixa.",
-                    "Atenção",
+                    "O caixa " + caixaTexto + " já está aberto.\n"
+                    + "Feche a sessão atual antes de abrir outra.",
+                    "Caixa já aberto",
                     JOptionPane.WARNING_MESSAGE
             );
 
             txtCaixa.requestFocus();
-
             return;
         }
 
         // ---------------------------------------------
-        // VALOR DE ABERTURA
+        // CONFIRMAR ABERTURA
         // ---------------------------------------------
 
-        String valorTexto =
-                txtValorAbertura
-                        .getText()
-                        .trim();
-
-        if (valorTexto.isEmpty()) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe o valor de abertura do caixa.",
-                    "Atenção",
-                    JOptionPane.WARNING_MESSAGE
-            );
-
-            txtValorAbertura.requestFocus();
-
-            return;
-        }
-
-        // ---------------------------------------------
-        // CONVERTER VALOR
-        // ---------------------------------------------
-
-        BigDecimal valorAbertura;
-
-        try {
-
-            valorTexto =
-                    valorTexto.replace(",", ".");
-
-            valorAbertura =
-                    new BigDecimal(valorTexto);
-
-        } catch (NumberFormatException e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Informe um valor válido.\n"
-                    + "Exemplo: 100,00",
-                    "Valor inválido",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-            txtValorAbertura.requestFocus();
-
-            return;
-        }
-
-        // ---------------------------------------------
-        // VALOR NEGATIVO
-        // ---------------------------------------------
-
-        if (
-                valorAbertura.compareTo(
-                        BigDecimal.ZERO
-                ) < 0
-        ) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "O valor de abertura não pode ser negativo.",
-                    "Valor inválido",
-                    JOptionPane.ERROR_MESSAGE
-            );
-
-            txtValorAbertura.requestFocus();
-
-            return;
-        }
-
-        // ---------------------------------------------
-        // CONFIRMAÇÃO
-        // ---------------------------------------------
-
-        int resposta =
-                JOptionPane.showConfirmDialog(
-                        this,
-                        "Deseja abrir o caixa "
-                        + caixaTexto
-                        + " com o valor de R$ "
-                        + valorAbertura.toString()
-                        + "?",
-                        "Confirmar abertura",
-                        JOptionPane.YES_NO_OPTION
-                );
+        int resposta = JOptionPane.showConfirmDialog(
+                this,
+                "Deseja abrir o caixa " + caixaTexto
+                + " com o valor de R$ "
+                + valorAbertura.toPlainString()
+                .replace(".", ",") + "?",
+                "Confirmar abertura",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE
+        );
 
         if (resposta != JOptionPane.YES_OPTION) {
             return;
         }
 
         // ---------------------------------------------
-        // SALVAR NO BANCO
+        // CRIAR OBJETO CAIXA
         // ---------------------------------------------
 
-        try {
+        Caixa caixa = new Caixa();
 
-            // Verifica se já existe caixa aberto
-            Caixa caixaAberto =
-                    caixaDAO.buscarCaixaAberto();
+        caixa.setIdCaixa(caixaTexto);
 
-            if (caixaAberto != null) {
+        caixa.setUsuario(usuario);
 
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Já existe um caixa aberto no sistema.",
-                        "Caixa já aberto",
-                        JOptionPane.WARNING_MESSAGE
-                );
+        caixa.setDataAbertura(LocalDateTime.now());
 
-                return;
-            }
+        caixa.setValorAbertura(valorAbertura);
 
-            // -----------------------------------------
-            // CRIA O OBJETO CAIXA
-            // -----------------------------------------
+        caixa.setStatus(StatusCaixa.ABERTO);
 
-            Caixa caixa =
-                    new Caixa();
+        // ---------------------------------------------
+        // CADASTRAR NO BANCO
+        // ---------------------------------------------
 
-            caixa.setIdCaixa(
-                    caixaTexto
-            );
+        boolean sucesso = caixaDAO.cadastrar(caixa);
 
-            caixa.setUsuario(
-                    usuario
-            );
-
-            caixa.setDataAbertura(
-                    LocalDateTime.now()
-            );
-
-            caixa.setValorAbertura(
-                    valorAbertura
-            );
-
-            caixa.setStatus(
-                    StatusCaixa.ABERTO
-            );
-
-            // -----------------------------------------
-            // CADASTRA NO BANCO
-            // -----------------------------------------
-
-            boolean sucesso =
-                    caixaDAO.cadastrar(caixa);
-
-            if (!sucesso) {
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Não foi possível abrir o caixa.",
-                        "Erro",
-                        JOptionPane.ERROR_MESSAGE
-                );
-
-                return;
-            }
-
-            // -----------------------------------------
-            // SUCESSO
-            // -----------------------------------------
+        if (!sucesso) {
 
             JOptionPane.showMessageDialog(
                     this,
-                    "Caixa "
-                    + caixaTexto
-                    + " aberto com sucesso!",
-                    "Sucesso",
-                    JOptionPane.INFORMATION_MESSAGE
-            );
-
-            // -----------------------------------------
-            // ABRE A FRENTE DE CAIXA
-            // -----------------------------------------
-
-            CaixaGUI telaCaixa =
-                    new CaixaGUI(
-                            usuario,
-                            caixa
-                    );
-
-            telaCaixa.setVisible(true);
-
-            // Fecha a tela de abertura
-            dispose();
-
-        } catch (Exception e) {
-
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Erro ao abrir o caixa:\n"
-                    + e.getMessage(),
+                    "Não foi possível abrir o caixa.\n"
+                    + "Verifique os dados e tente novamente.",
                     "Erro",
                     JOptionPane.ERROR_MESSAGE
             );
 
-            e.printStackTrace();
+            return;
         }
+
+        // ---------------------------------------------
+        // ABERTURA REALIZADA
+        // ---------------------------------------------
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Caixa " + caixaTexto
+                + " aberto com sucesso!",
+                "Sucesso",
+                JOptionPane.INFORMATION_MESSAGE
+        );
+
+        // ---------------------------------------------
+        // ABRIR FRENTE DE CAIXA
+        // ---------------------------------------------
+
+        CaixaGUI telaCaixa = new CaixaGUI(
+                usuario,
+                caixa
+        );
+
+        telaCaixa.setVisible(true);
+
+        // Fecha a tela de abertura.
+        dispose();
+
+    } catch (Exception e) {
+
+        JOptionPane.showMessageDialog(
+                this,
+                "Erro ao abrir o caixa:\n"
+                + e.getMessage(),
+                "Erro",
+                JOptionPane.ERROR_MESSAGE
+        );
+
+        e.printStackTrace();
     }
+}
+
 
     // =====================================================
     // CANCELAR

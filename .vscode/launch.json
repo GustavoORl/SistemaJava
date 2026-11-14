@@ -7,6 +7,7 @@
       "name": "LoginGUI",
       "request": "launch",
       "mainClass": "view.LoginGUI",
+<<<<<<< HEAD
       "projectName": "SistemaJava_98920cdc"
     },
     {
@@ -15,6 +16,9 @@
       "request": "launch",
       "mainClass": "view.CaixaAberturaGUI",
       "projectName": "SistemaJava_98920cdc"
+=======
+      "projectName": "SistemaJava_22cbaa8"
+>>>>>>> origin
     },
     {
       "type": "java",

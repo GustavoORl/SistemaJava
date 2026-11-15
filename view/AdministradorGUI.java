@@ -1,8 +1,11 @@
 package view;
 
 import dao.AdministradorConsultaDAO;
+import dao.CargoDAO;
 import dao.CategoriaDAO;
 import dao.ProdutoDAO;
+import dao.UsuarioDAO;
+import model.Cargo;
 import model.Categoria;
 import model.Produto;
 import model.Usuario;
@@ -371,6 +374,20 @@ public class AdministradorGUI extends JFrame {
             actions.add(delete);
             actions.add(refresh);
             tools.add(actions, BorderLayout.EAST);
+        } else if (section.equals("Usuários")) {
+            // Ações de cadastro e manutenção de usuários.
+            JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            ActionButton create = new ActionButton("Novo usuário", false);
+            create.addActionListener(e -> createUser());
+            ActionButton edit = new ActionButton("Atualizar usuário", false);
+            edit.addActionListener(e -> editSelectedUser());
+            ActionButton delete = new ActionButton("Excluir usuário", false);
+            delete.addActionListener(e -> deleteSelectedUser());
+            actions.add(create);
+            actions.add(edit);
+            actions.add(delete);
+            actions.add(refresh);
+            tools.add(actions, BorderLayout.EAST);
         } else {
             tools.add(refresh, BorderLayout.EAST);
         }
@@ -457,12 +474,12 @@ public class AdministradorGUI extends JFrame {
         }
     }
 
-    // ===== Produtos: atualizar e excluir (usa ProdutoDAO e CategoriaDAO) =====
+    // ===== Auxiliares compartilhados pelas ações de Produtos e Usuários =====
 
-    // Retorna o id_produto da linha selecionada, ou null se nada foi selecionado.
-    private Integer selectedProductId() {
+    // Retorna o id da linha selecionada (coluna informada), ou null se nada foi selecionado.
+    private Integer selectedId(String idColumnName, String entityName) {
         if (currentTable == null || currentTable.getSelectedRow() < 0) {
-            JOptionPane.showMessageDialog(this, "Selecione um produto na tabela.",
+            JOptionPane.showMessageDialog(this, "Selecione um " + entityName + " na tabela.",
                     "CoStock", JOptionPane.INFORMATION_MESSAGE);
             return null;
         }
@@ -470,21 +487,23 @@ public class AdministradorGUI extends JFrame {
         TableModel model = currentTable.getModel();
         int idColumn = 0;
         for (int i = 0; i < model.getColumnCount(); i++) {
-            if (model.getColumnName(i).equals("ID PRODUTO")) { idColumn = i; break; }
+            if (model.getColumnName(i).equals(idColumnName)) { idColumn = i; break; }
         }
         Object value = model.getValueAt(row, idColumn);
         return value == null ? null : Integer.valueOf(value.toString());
     }
 
-    // Recarrega só se a tela de Produtos ainda estiver aberta (o usuário pode ter navegado).
-    private void reloadProductsIfVisible() {
-        if ("Produtos".equals(currentPage) && currentTable != null && tableStatus != null) {
-            loadListing("Produtos");
+    // Recarrega só se a tela ainda estiver aberta (o usuário pode ter navegado).
+    private void reloadIfVisible(String section) {
+        if (section.equals(currentPage) && currentTable != null && tableStatus != null) {
+            loadListing(section);
         }
     }
 
+    // ===== Produtos: atualizar e excluir (usa ProdutoDAO e CategoriaDAO) =====
+
     private void deleteSelectedProduct() {
-        Integer id = selectedProductId();
+        Integer id = selectedId("ID PRODUTO", "produto");
         if (id == null) return;
         int answer = JOptionPane.showConfirmDialog(this,
                 "Deseja excluir o produto #" + id + "?\nEsta ação não pode ser desfeita.",
@@ -499,7 +518,7 @@ public class AdministradorGUI extends JFrame {
                 try {
                     if (get()) {
                         JOptionPane.showMessageDialog(AdministradorGUI.this, "Produto excluído com sucesso.");
-                        reloadProductsIfVisible();
+                        reloadIfVisible("Produtos");
                     } else {
                         JOptionPane.showMessageDialog(AdministradorGUI.this,
                                 "Não foi possível excluir o produto.\n"
@@ -513,7 +532,7 @@ public class AdministradorGUI extends JFrame {
     }
 
     private void editSelectedProduct() {
-        Integer id = selectedProductId();
+        Integer id = selectedId("ID PRODUTO", "produto");
         if (id == null) return;
 
         // Carrega o produto (com categoria) e as categorias disponíveis.
@@ -659,13 +678,227 @@ public class AdministradorGUI extends JFrame {
                         if (get()) {
                             dialog.dispose();
                             JOptionPane.showMessageDialog(AdministradorGUI.this, "Produto atualizado com sucesso.");
-                            reloadProductsIfVisible();
+                            reloadIfVisible("Produtos");
                         } else {
                             JOptionPane.showMessageDialog(dialog,
                                     "Não foi possível atualizar o produto.\n"
                                             + "Verifique os dados informados (por exemplo, se o código\n"
                                             + "de barras já pertence a outro produto).",
                                     "Atualizar produto", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) { showError(ex); }
+                }
+            }.execute();
+        });
+        buttons.add(cancel);
+        buttons.add(save);
+        root.add(buttons, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setSize(Math.max(dialog.getWidth(), 620), dialog.getHeight());
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    // ===== Usuários: criar, atualizar e excluir (usa UsuarioDAO e CargoDAO) =====
+
+    private void createUser() {
+        new SwingWorker<java.util.List<Cargo>, Void>() {
+            @Override protected java.util.List<Cargo> doInBackground() {
+                return new CargoDAO().listar();
+            }
+            @Override protected void done() {
+                try { showUserDialog(null, get()); }
+                catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private void editSelectedUser() {
+        Integer id = selectedId("ID USUARIO", "usuário");
+        if (id == null) return;
+
+        new SwingWorker<Object[], Void>() {
+            @Override protected Object[] doInBackground() {
+                return new Object[]{new UsuarioDAO().buscarPorId(id), new CargoDAO().listar()};
+            }
+            @SuppressWarnings("unchecked")
+            @Override protected void done() {
+                try {
+                    Object[] result = get();
+                    if (result[0] == null) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Usuário não encontrado.",
+                                "Atualizar usuário", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    showUserDialog((Usuario) result[0], (java.util.List<Cargo>) result[1]);
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private void deleteSelectedUser() {
+        Integer id = selectedId("ID USUARIO", "usuário");
+        if (id == null) return;
+        if (usuarioLogado != null && usuarioLogado.getId() == id) {
+            JOptionPane.showMessageDialog(this, "Você não pode excluir o usuário com o qual está conectado.",
+                    "Excluir usuário", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Deseja excluir o usuário #" + id + "?\nEsta ação não pode ser desfeita.",
+                "Excluir usuário", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) return;
+
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() {
+                return new UsuarioDAO().excluir(id);
+            }
+            @Override protected void done() {
+                try {
+                    if (get()) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Usuário excluído com sucesso.");
+                        reloadIfVisible("Usuários");
+                    } else {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this,
+                                "Não foi possível excluir o usuário.\n"
+                                        + "Ele pode estar vinculado a caixas, vendas ou movimentações.\n"
+                                        + "Nesse caso, use \"Atualizar usuário\" e desmarque \"Usuário ativo\".",
+                                "Excluir usuário", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    // usuario == null abre o formulário em modo de cadastro.
+    private void showUserDialog(Usuario usuario, java.util.List<Cargo> cargos) {
+        final boolean novo = usuario == null;
+        final Usuario alvo = novo ? new Usuario() : usuario;
+        final String dialogTitle = novo ? "Novo usuário" : "Atualizar usuário";
+
+        JDialog dialog = new JDialog(this, dialogTitle, true);
+        JPanel root = new JPanel(new BorderLayout(0, 18));
+        root.setBackground(WHITE);
+        root.setBorder(new EmptyBorder(24, 28, 22, 28));
+        dialog.setContentPane(root);
+
+        JPanel heading = transparent();
+        heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
+        JLabel title = label(novo ? "Novo usuário" : "Atualizar usuário #" + alvo.getId(), 20, true, TEXT);
+        JLabel subtitle = label(novo ? "Preencha os dados e clique em salvar."
+                : "Altere os dados e clique em salvar. Deixe a senha em branco para mantê-la.",
+                12, false, MUTED);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heading.add(title);
+        heading.add(Box.createVerticalStrut(5));
+        heading.add(subtitle);
+        root.add(heading, BorderLayout.NORTH);
+
+        JTextField nome = formField(alvo.getNome());
+        JTextField email = formField(alvo.getEmail());
+        JTextField telefone = formField(alvo.getTelefone());
+        JTextField endereco = formField(alvo.getEndereco());
+        JPasswordField senha = new JPasswordField();
+        senha.setFont(font(13, false));
+        senha.setForeground(TEXT);
+        senha.setBackground(WHITE);
+        senha.setCaretColor(PRIMARY);
+        senha.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER), new EmptyBorder(9, 12, 9, 12)));
+
+        JComboBox<Cargo> cargo = new JComboBox<>(cargos.toArray(new Cargo[0]));
+        cargo.setFont(font(13, false));
+        cargo.setBackground(WHITE);
+        cargo.setForeground(TEXT);
+        cargo.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof Cargo) setText(((Cargo) value).getNome());
+                setBorder(new EmptyBorder(6, 10, 6, 10));
+                return this;
+            }
+        });
+        for (Cargo c : cargos) {
+            if (alvo.getCargo() != null && c.getId() == alvo.getCargo().getId()) cargo.setSelectedItem(c);
+        }
+
+        JCheckBox ativo = new JCheckBox("Usuário ativo", novo || alvo.isAtivo());
+        ativo.setFont(font(13, false));
+        ativo.setForeground(TEXT);
+        ativo.setOpaque(false);
+        ativo.setFocusPainted(false);
+
+        JPanel form = transparent(new GridLayout(0, 2, 14, 12));
+        Object[][] rows = {
+                {"NOME", nome}, {"E-MAIL", email}, {"TELEFONE", telefone}, {"ENDEREÇO", endereco},
+                {novo ? "SENHA" : "NOVA SENHA (OPCIONAL)", senha}, {"CARGO", cargo}, {"SITUAÇÃO", ativo}};
+        for (Object[] r : rows) {
+            JPanel cell = transparent(new BorderLayout(0, 6));
+            cell.add(label((String) r[0], 11, true, MUTED), BorderLayout.NORTH);
+            cell.add((Component) r[1], BorderLayout.CENTER);
+            form.add(cell);
+        }
+        root.add(form, BorderLayout.CENTER);
+
+        JPanel buttons = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        ActionButton cancel = new ActionButton("Cancelar", false);
+        cancel.addActionListener(e -> dialog.dispose());
+        ActionButton save = new ActionButton(novo ? "Cadastrar usuário" : "Salvar alterações", true);
+        save.addActionListener(e -> {
+            String textoNome = nome.getText().trim();
+            String textoEmail = email.getText().trim();
+            String textoTelefone = telefone.getText().trim();
+            String textoEndereco = endereco.getText().trim();
+            String textoSenha = new String(senha.getPassword());
+            String erro = null;
+            // Limites conforme as colunas da tabela usuarios.
+            if (textoNome.isEmpty()) erro = "Informe o nome do usuário.";
+            else if (textoNome.length() > 100) erro = "O nome pode ter no máximo 100 caracteres.";
+            else if (!textoEmail.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) erro = "Informe um e-mail válido.";
+            else if (textoEmail.length() > 100) erro = "O e-mail pode ter no máximo 100 caracteres.";
+            else if (textoTelefone.length() > 20) erro = "O telefone pode ter no máximo 20 caracteres.";
+            else if (textoEndereco.length() > 255) erro = "O endereço pode ter no máximo 255 caracteres.";
+            else if (novo && textoSenha.isEmpty()) erro = "Informe uma senha.";
+            else if (textoSenha.length() > 255) erro = "A senha pode ter no máximo 255 caracteres.";
+            else if (cargo.getSelectedItem() == null) erro = "Selecione um cargo.";
+            else if (!novo && usuarioLogado != null && usuarioLogado.getId() == alvo.getId() && !ativo.isSelected())
+                erro = "Você não pode desativar o usuário com o qual está conectado.";
+            if (erro != null) {
+                JOptionPane.showMessageDialog(dialog, erro, dialogTitle, JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            alvo.setNome(textoNome);
+            alvo.setEmail(textoEmail);
+            alvo.setTelefone(textoTelefone.isEmpty() ? null : textoTelefone);
+            alvo.setEndereco(textoEndereco.isEmpty() ? null : textoEndereco);
+            if (!textoSenha.isEmpty()) alvo.setSenha(textoSenha);
+            alvo.setCargo((Cargo) cargo.getSelectedItem());
+            alvo.setAtivo(ativo.isSelected());
+
+            save.setEnabled(false);
+            new SwingWorker<Boolean, Void>() {
+                @Override protected Boolean doInBackground() {
+                    UsuarioDAO dao = new UsuarioDAO();
+                    return novo ? dao.cadastrar(alvo) : dao.atualizar(alvo);
+                }
+                @Override protected void done() {
+                    save.setEnabled(true);
+                    try {
+                        if (get()) {
+                            dialog.dispose();
+                            JOptionPane.showMessageDialog(AdministradorGUI.this,
+                                    novo ? "Usuário cadastrado com sucesso." : "Usuário atualizado com sucesso.");
+                            reloadIfVisible("Usuários");
+                        } else {
+                            JOptionPane.showMessageDialog(dialog,
+                                    "Não foi possível salvar o usuário.\n"
+                                            + "Verifique os dados informados (por exemplo, se o e-mail\n"
+                                            + "já pertence a outro usuário).",
+                                    dialogTitle, JOptionPane.ERROR_MESSAGE);
                         }
                     } catch (Exception ex) { showError(ex); }
                 }

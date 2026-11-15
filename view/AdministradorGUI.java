@@ -1,6 +1,10 @@
 package view;
 
 import dao.AdministradorConsultaDAO;
+import dao.CategoriaDAO;
+import dao.ProdutoDAO;
+import model.Categoria;
+import model.Produto;
 import model.Usuario;
 import java.awt.*;
 import java.awt.event.*;
@@ -356,7 +360,20 @@ public class AdministradorGUI extends JFrame {
         });
         ActionButton refresh = new ActionButton("Atualizar listagem", true);
         refresh.addActionListener(e -> loadListing(section));
-        tools.add(refresh, BorderLayout.EAST);
+        if (section.equals("Produtos")) {
+            // Ações sobre o produto selecionado na tabela.
+            JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            ActionButton edit = new ActionButton("Atualizar produto", false);
+            edit.addActionListener(e -> editSelectedProduct());
+            ActionButton delete = new ActionButton("Excluir produto", false);
+            delete.addActionListener(e -> deleteSelectedProduct());
+            actions.add(edit);
+            actions.add(delete);
+            actions.add(refresh);
+            tools.add(actions, BorderLayout.EAST);
+        } else {
+            tools.add(refresh, BorderLayout.EAST);
+        }
         toolbar.add(tools, BorderLayout.SOUTH);
         content.add(toolbar, BorderLayout.NORTH);
 
@@ -438,6 +455,230 @@ public class AdministradorGUI extends JFrame {
             tableStatus.setText(currentTable.getRowCount() + " registro(s) exibido(s)"
                     + (term.isEmpty() ? "" : " para: " + term));
         }
+    }
+
+    // ===== Produtos: atualizar e excluir (usa ProdutoDAO e CategoriaDAO) =====
+
+    // Retorna o id_produto da linha selecionada, ou null se nada foi selecionado.
+    private Integer selectedProductId() {
+        if (currentTable == null || currentTable.getSelectedRow() < 0) {
+            JOptionPane.showMessageDialog(this, "Selecione um produto na tabela.",
+                    "CoStock", JOptionPane.INFORMATION_MESSAGE);
+            return null;
+        }
+        int row = currentTable.convertRowIndexToModel(currentTable.getSelectedRow());
+        TableModel model = currentTable.getModel();
+        int idColumn = 0;
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            if (model.getColumnName(i).equals("ID PRODUTO")) { idColumn = i; break; }
+        }
+        Object value = model.getValueAt(row, idColumn);
+        return value == null ? null : Integer.valueOf(value.toString());
+    }
+
+    // Recarrega só se a tela de Produtos ainda estiver aberta (o usuário pode ter navegado).
+    private void reloadProductsIfVisible() {
+        if ("Produtos".equals(currentPage) && currentTable != null && tableStatus != null) {
+            loadListing("Produtos");
+        }
+    }
+
+    private void deleteSelectedProduct() {
+        Integer id = selectedProductId();
+        if (id == null) return;
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Deseja excluir o produto #" + id + "?\nEsta ação não pode ser desfeita.",
+                "Excluir produto", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) return;
+
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() {
+                return new ProdutoDAO().excluir(id);
+            }
+            @Override protected void done() {
+                try {
+                    if (get()) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Produto excluído com sucesso.");
+                        reloadProductsIfVisible();
+                    } else {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this,
+                                "Não foi possível excluir o produto.\n"
+                                        + "Ele pode estar vinculado a estoque, vendas ou movimentações.\n"
+                                        + "Nesse caso, use \"Atualizar produto\" e desmarque \"Produto ativo\".",
+                                "Excluir produto", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private void editSelectedProduct() {
+        Integer id = selectedProductId();
+        if (id == null) return;
+
+        // Carrega o produto (com categoria) e as categorias disponíveis.
+        new SwingWorker<Object[], Void>() {
+            @Override protected Object[] doInBackground() {
+                return new Object[]{new ProdutoDAO().buscarPorId(id), new CategoriaDAO().listar()};
+            }
+            @SuppressWarnings("unchecked")
+            @Override protected void done() {
+                try {
+                    Object[] result = get();
+                    if (result[0] == null) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Produto não encontrado.",
+                                "Atualizar produto", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    showProductDialog((Produto) result[0], (java.util.List<Categoria>) result[1]);
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private JTextField formField(String value) {
+        JTextField field = new JTextField(value == null ? "" : value);
+        field.setFont(font(13, false));
+        field.setForeground(TEXT);
+        field.setBackground(WHITE);
+        field.setCaretColor(PRIMARY);
+        field.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(BORDER), new EmptyBorder(9, 12, 9, 12)));
+        return field;
+    }
+
+    private void showProductDialog(Produto produto, java.util.List<Categoria> categorias) {
+        JDialog dialog = new JDialog(this, "Atualizar produto", true);
+        JPanel root = new JPanel(new BorderLayout(0, 18));
+        root.setBackground(WHITE);
+        root.setBorder(new EmptyBorder(24, 28, 22, 28));
+        dialog.setContentPane(root);
+
+        JPanel heading = transparent();
+        heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
+        JLabel title = label("Atualizar produto #" + produto.getIdProduto(), 20, true, TEXT);
+        JLabel subtitle = label("Altere os dados e clique em salvar.", 12, false, MUTED);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        heading.add(title);
+        heading.add(Box.createVerticalStrut(5));
+        heading.add(subtitle);
+        root.add(heading, BorderLayout.NORTH);
+
+        JTextField nome = formField(produto.getNome());
+        JTextField descricao = formField(produto.getDescricao());
+        JTextField codigo = formField(produto.getCodigoBarras());
+        JTextField custo = formField(produto.getPrecoCusto() == null ? "" : produto.getPrecoCusto().toPlainString());
+        JTextField venda = formField(produto.getPrecoVenda() == null ? "" : produto.getPrecoVenda().toPlainString());
+        JTextField minimo = formField(Integer.toString(produto.getEstoqueMinimo()));
+
+        JComboBox<Categoria> categoria = new JComboBox<>(categorias.toArray(new Categoria[0]));
+        categoria.setFont(font(13, false));
+        categoria.setBackground(WHITE);
+        categoria.setForeground(TEXT);
+        categoria.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof Categoria) setText(((Categoria) value).getNome());
+                setBorder(new EmptyBorder(6, 10, 6, 10));
+                return this;
+            }
+        });
+        for (Categoria c : categorias) {
+            if (produto.getCategoria() != null && c.getId() == produto.getCategoria().getId()) {
+                categoria.setSelectedItem(c);
+            }
+        }
+
+        JCheckBox ativo = new JCheckBox("Produto ativo", produto.isAtivo());
+        ativo.setFont(font(13, false));
+        ativo.setForeground(TEXT);
+        ativo.setOpaque(false);
+        ativo.setFocusPainted(false);
+
+        JPanel form = transparent(new GridLayout(0, 2, 14, 12));
+        Object[][] rows = {
+                {"NOME", nome}, {"DESCRIÇÃO", descricao}, {"CÓDIGO DE BARRAS", codigo},
+                {"CATEGORIA", categoria}, {"PREÇO DE CUSTO", custo}, {"PREÇO DE VENDA", venda},
+                {"ESTOQUE MÍNIMO", minimo}, {"SITUAÇÃO", ativo}};
+        for (Object[] r : rows) {
+            JPanel cell = transparent(new BorderLayout(0, 6));
+            cell.add(label((String) r[0], 11, true, MUTED), BorderLayout.NORTH);
+            cell.add((Component) r[1], BorderLayout.CENTER);
+            form.add(cell);
+        }
+        root.add(form, BorderLayout.CENTER);
+
+        JPanel buttons = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        ActionButton cancel = new ActionButton("Cancelar", false);
+        cancel.addActionListener(e -> dialog.dispose());
+        ActionButton save = new ActionButton("Salvar alterações", true);
+        save.addActionListener(e -> {
+            try {
+                if (nome.getText().trim().isEmpty()) throw new IllegalArgumentException("Informe o nome do produto.");
+                // Limites conforme as colunas da tabela produtos.
+                if (nome.getText().trim().length() > 150) throw new IllegalArgumentException("O nome pode ter no máximo 150 caracteres.");
+                if (descricao.getText().trim().length() > 255) throw new IllegalArgumentException("A descrição pode ter no máximo 255 caracteres.");
+                if (codigo.getText().trim().length() > 50) throw new IllegalArgumentException("O código de barras pode ter no máximo 50 caracteres.");
+                if (categoria.getSelectedItem() == null) throw new IllegalArgumentException("Selecione uma categoria.");
+                java.math.BigDecimal precoCusto = new java.math.BigDecimal(custo.getText().trim().replace(",", "."));
+                java.math.BigDecimal precoVenda = new java.math.BigDecimal(venda.getText().trim().replace(",", "."));
+                int estoqueMinimo = Integer.parseInt(minimo.getText().trim());
+                if (precoCusto.signum() < 0 || precoVenda.signum() < 0 || estoqueMinimo < 0)
+                    throw new IllegalArgumentException("Preços e estoque mínimo não podem ser negativos.");
+
+                produto.setNome(nome.getText().trim());
+                String textoDescricao = descricao.getText().trim();
+                produto.setDescricao(textoDescricao.isEmpty() ? null : textoDescricao);
+                String codigoBarras = codigo.getText().trim();
+                produto.setCodigoBarras(codigoBarras.isEmpty() ? null : codigoBarras);
+                produto.setPrecoCusto(precoCusto);
+                produto.setPrecoVenda(precoVenda);
+                produto.setEstoqueMinimo(estoqueMinimo);
+                produto.setCategoria((Categoria) categoria.getSelectedItem());
+                produto.setAtivo(ativo.isSelected());
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "Preços e estoque mínimo devem ser números válidos.",
+                        "Atualizar produto", JOptionPane.WARNING_MESSAGE);
+                return;
+            } catch (IllegalArgumentException ex) {
+                JOptionPane.showMessageDialog(dialog, ex.getMessage(),
+                        "Atualizar produto", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            save.setEnabled(false);
+            new SwingWorker<Boolean, Void>() {
+                @Override protected Boolean doInBackground() {
+                    return new ProdutoDAO().atualizar(produto);
+                }
+                @Override protected void done() {
+                    save.setEnabled(true);
+                    try {
+                        if (get()) {
+                            dialog.dispose();
+                            JOptionPane.showMessageDialog(AdministradorGUI.this, "Produto atualizado com sucesso.");
+                            reloadProductsIfVisible();
+                        } else {
+                            JOptionPane.showMessageDialog(dialog,
+                                    "Não foi possível atualizar o produto.\n"
+                                            + "Verifique os dados informados (por exemplo, se o código\n"
+                                            + "de barras já pertence a outro produto).",
+                                    "Atualizar produto", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) { showError(ex); }
+                }
+            }.execute();
+        });
+        buttons.add(cancel);
+        buttons.add(save);
+        root.add(buttons, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setSize(Math.max(dialog.getWidth(), 620), dialog.getHeight());
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
     }
 
     private void buildFinancialPanel() {

@@ -3,10 +3,13 @@ package view;
 import dao.AdministradorConsultaDAO;
 import dao.CargoDAO;
 import dao.CategoriaDAO;
+import dao.EstoqueDAO;
 import dao.ProdutoDAO;
 import dao.UsuarioDAO;
 import model.Cargo;
 import model.Categoria;
+import model.Estoque;
+import services.EstoqueService;
 import model.Produto;
 import model.Usuario;
 import java.awt.*;
@@ -386,6 +389,28 @@ public class AdministradorGUI extends JFrame {
             actions.add(create);
             actions.add(edit);
             actions.add(delete);
+            actions.add(refresh);
+            tools.add(actions, BorderLayout.EAST);
+        } else if (section.equals("Estoque")) {
+            // Ações de cadastro, ajuste de quantidade e exclusão de estoques.
+            JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            ActionButton create = new ActionButton("Novo estoque", false);
+            create.addActionListener(e -> createStock());
+            ActionButton edit = new ActionButton("Editar quantidade", false);
+            edit.addActionListener(e -> editSelectedStock());
+            ActionButton delete = new ActionButton("Excluir estoque", false);
+            delete.addActionListener(e -> deleteSelectedStock());
+            actions.add(create);
+            actions.add(edit);
+            actions.add(delete);
+            actions.add(refresh);
+            tools.add(actions, BorderLayout.EAST);
+        } else if (section.equals("Movimentações de Estoque")) {
+            // Registro de entradas e saídas de estoque.
+            JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+            ActionButton create = new ActionButton("Nova movimentação", false);
+            create.addActionListener(e -> createMovement());
+            actions.add(create);
             actions.add(refresh);
             tools.add(actions, BorderLayout.EAST);
         } else {
@@ -911,6 +936,390 @@ public class AdministradorGUI extends JFrame {
         dialog.pack();
         dialog.setSize(Math.max(dialog.getWidth(), 620), dialog.getHeight());
         dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    // ===== Estoque: criar, editar quantidade e excluir (usa EstoqueDAO e EstoqueService) =====
+
+    // Erros de regra (produto inativo, estoque insuficiente...) já vêm com mensagem pronta do
+    // EstoqueService; falhas de banco chegam embrulhadas em IllegalStateException.
+    private static String serviceErrorMessage(java.util.concurrent.ExecutionException ex) {
+        Throwable cause = ex.getCause();
+        return cause instanceof IllegalStateException && cause.getCause() != null
+                ? cause.getMessage() + "\n" + cause.getCause().getMessage()
+                : cause.getMessage();
+    }
+
+    // Janela padrão (título, subtítulo, formulário e botões) usada pelos formulários de estoque
+    // e de movimentações.
+    private JDialog stockDialog(String dialogTitle, String heading, String subtitle,
+            Object[][] rows, ActionButton save) {
+        JDialog dialog = new JDialog(this, dialogTitle, true);
+        JPanel root = new JPanel(new BorderLayout(0, 18));
+        root.setBackground(WHITE);
+        root.setBorder(new EmptyBorder(24, 28, 22, 28));
+        dialog.setContentPane(root);
+
+        JPanel head = transparent();
+        head.setLayout(new BoxLayout(head, BoxLayout.Y_AXIS));
+        JLabel title = label(heading, 20, true, TEXT);
+        JLabel sub = label(subtitle, 12, false, MUTED);
+        title.setAlignmentX(Component.LEFT_ALIGNMENT);
+        sub.setAlignmentX(Component.LEFT_ALIGNMENT);
+        head.add(title);
+        head.add(Box.createVerticalStrut(5));
+        head.add(sub);
+        root.add(head, BorderLayout.NORTH);
+
+        JPanel form = transparent(new GridLayout(0, 2, 14, 12));
+        for (Object[] r : rows) {
+            JPanel cell = transparent(new BorderLayout(0, 6));
+            cell.add(label((String) r[0], 11, true, MUTED), BorderLayout.NORTH);
+            cell.add((Component) r[1], BorderLayout.CENTER);
+            form.add(cell);
+        }
+        root.add(form, BorderLayout.CENTER);
+
+        JPanel buttons = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        ActionButton cancel = new ActionButton("Cancelar", false);
+        cancel.addActionListener(e -> dialog.dispose());
+        buttons.add(cancel);
+        buttons.add(save);
+        root.add(buttons, BorderLayout.SOUTH);
+
+        dialog.pack();
+        dialog.setSize(Math.max(dialog.getWidth(), 620), dialog.getHeight());
+        dialog.setLocationRelativeTo(this);
+        return dialog;
+    }
+
+    private void createStock() {
+        // Lista apenas produtos que ainda não têm estoque (id_produto é único na tabela estoque).
+        new SwingWorker<java.util.List<Produto>, Void>() {
+            @Override protected java.util.List<Produto> doInBackground() {
+                Set<Integer> comEstoque = new HashSet<>();
+                for (Estoque e : new EstoqueDAO().listar()) comEstoque.add(e.getProduto().getIdProduto());
+                java.util.List<Produto> disponiveis = new ArrayList<>();
+                for (Produto p : new ProdutoDAO().listar()) {
+                    if (!comEstoque.contains(p.getIdProduto())) disponiveis.add(p);
+                }
+                return disponiveis;
+            }
+            @Override protected void done() {
+                try {
+                    java.util.List<Produto> produtos = get();
+                    if (produtos.isEmpty()) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this,
+                                "Todos os produtos cadastrados já possuem estoque.",
+                                "Novo estoque", JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
+                    showCreateStockDialog(produtos);
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private void showCreateStockDialog(java.util.List<Produto> produtos) {
+        JComboBox<Produto> produto = new JComboBox<>(produtos.toArray(new Produto[0]));
+        produto.setFont(font(13, false));
+        produto.setBackground(WHITE);
+        produto.setForeground(TEXT);
+        produto.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof Produto) {
+                    Produto p = (Produto) value;
+                    setText("#" + p.getIdProduto() + " — " + p.getNome());
+                }
+                setBorder(new EmptyBorder(6, 10, 6, 10));
+                return this;
+            }
+        });
+        JTextField quantidade = formField("0");
+
+        ActionButton save = new ActionButton("Cadastrar estoque", true);
+        JDialog dialog = stockDialog("Novo estoque", "Novo estoque",
+                "Escolha um produto sem estoque e informe a quantidade inicial.",
+                new Object[][]{{"PRODUTO", produto}, {"QUANTIDADE INICIAL", quantidade}}, save);
+
+        save.addActionListener(e -> {
+            int qtd;
+            try {
+                qtd = Integer.parseInt(quantidade.getText().trim());
+                if (qtd < 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "Informe uma quantidade inteira maior ou igual a zero.",
+                        "Novo estoque", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            Estoque estoque = new Estoque();
+            estoque.setProduto((Produto) produto.getSelectedItem());
+            estoque.setQuantidade(qtd);
+
+            save.setEnabled(false);
+            new SwingWorker<Boolean, Void>() {
+                @Override protected Boolean doInBackground() {
+                    return new EstoqueDAO().cadastrar(estoque);
+                }
+                @Override protected void done() {
+                    save.setEnabled(true);
+                    try {
+                        if (get()) {
+                            dialog.dispose();
+                            JOptionPane.showMessageDialog(AdministradorGUI.this, "Estoque cadastrado com sucesso.");
+                            reloadIfVisible("Estoque");
+                        } else {
+                            JOptionPane.showMessageDialog(dialog,
+                                    "Não foi possível cadastrar o estoque.\n"
+                                            + "Verifique se esse produto já não possui estoque.",
+                                    "Novo estoque", JOptionPane.ERROR_MESSAGE);
+                        }
+                    } catch (Exception ex) { showError(ex); }
+                }
+            }.execute();
+        });
+        dialog.setVisible(true);
+    }
+
+    private void editSelectedStock() {
+        if (usuarioLogado == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Entre pelo login para ajustar o estoque.\nO ajuste é registrado nas movimentações com o seu usuário.",
+                    "Editar quantidade", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        Integer idProduto = selectedId("ID PRODUTO", "estoque");
+        if (idProduto == null) return;
+
+        new SwingWorker<Estoque, Void>() {
+            @Override protected Estoque doInBackground() {
+                return new EstoqueDAO().buscarPorIdProduto(idProduto);
+            }
+            @Override protected void done() {
+                try {
+                    Estoque estoque = get();
+                    if (estoque == null) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Estoque não encontrado.",
+                                "Editar quantidade", JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    showEditStockDialog(estoque);
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private void showEditStockDialog(Estoque estoque) {
+        Produto produto = estoque.getProduto();
+        JTextField nomeProduto = formField("#" + produto.getIdProduto() + " — " + produto.getNome());
+        nomeProduto.setEditable(false);
+        nomeProduto.setBackground(CANVAS);
+        JTextField atual = formField(Integer.toString(estoque.getQuantidade()));
+        atual.setEditable(false);
+        atual.setBackground(CANVAS);
+        JTextField nova = formField(Integer.toString(estoque.getQuantidade()));
+        JTextField motivo = formField("");
+
+        ActionButton save = new ActionButton("Salvar ajuste", true);
+        JDialog dialog = stockDialog("Editar quantidade", "Editar quantidade do estoque #" + estoque.getId(),
+                "O ajuste é registrado em Movimentações de Estoque como AJUSTE.",
+                new Object[][]{{"PRODUTO", nomeProduto}, {"QUANTIDADE ATUAL", atual},
+                        {"NOVA QUANTIDADE", nova}, {"MOTIVO", motivo}}, save);
+
+        save.addActionListener(e -> {
+            int qtd;
+            try {
+                qtd = Integer.parseInt(nova.getText().trim());
+                if (qtd < 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "Informe uma quantidade inteira maior ou igual a zero.",
+                        "Editar quantidade", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String textoMotivo = motivo.getText().trim();
+            if (textoMotivo.isEmpty() || textoMotivo.length() > 255) {
+                JOptionPane.showMessageDialog(dialog, "Informe o motivo do ajuste (até 255 caracteres).",
+                        "Editar quantidade", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            save.setEnabled(false);
+            new SwingWorker<Void, Void>() {
+                @Override protected Void doInBackground() throws Exception {
+                    // Atualiza a quantidade e registra a movimentação na mesma transação.
+                    new EstoqueService().ajustarEstoque(produto.getIdProduto(), usuarioLogado.getId(), qtd, textoMotivo);
+                    return null;
+                }
+                @Override protected void done() {
+                    save.setEnabled(true);
+                    try {
+                        get();
+                        dialog.dispose();
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Quantidade atualizada com sucesso.");
+                        reloadIfVisible("Estoque");
+                    } catch (java.util.concurrent.ExecutionException ex) {
+                        JOptionPane.showMessageDialog(dialog,
+                                "Não foi possível ajustar o estoque.\n" + serviceErrorMessage(ex),
+                                "Editar quantidade", JOptionPane.ERROR_MESSAGE);
+                    } catch (Exception ex) { showError(ex); }
+                }
+            }.execute();
+        });
+        dialog.setVisible(true);
+    }
+
+    private void deleteSelectedStock() {
+        Integer idEstoque = selectedId("ID ESTOQUE", "estoque");
+        if (idEstoque == null) return;
+        int answer = JOptionPane.showConfirmDialog(this,
+                "Deseja excluir o estoque #" + idEstoque + "?\n"
+                        + "O produto continuará cadastrado, mas ficará sem registro de estoque.\n"
+                        + "Esta ação não pode ser desfeita.",
+                "Excluir estoque", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (answer != JOptionPane.YES_OPTION) return;
+
+        new SwingWorker<Boolean, Void>() {
+            @Override protected Boolean doInBackground() {
+                return new EstoqueDAO().excluir(idEstoque);
+            }
+            @Override protected void done() {
+                try {
+                    if (get()) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Estoque excluído com sucesso.");
+                        reloadIfVisible("Estoque");
+                    } else {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Não foi possível excluir o estoque.",
+                                "Excluir estoque", JOptionPane.ERROR_MESSAGE);
+                    }
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    // ===== Movimentações de Estoque: criar (usa EstoqueService) =====
+
+    private void createMovement() {
+        if (usuarioLogado == null) {
+            JOptionPane.showMessageDialog(this,
+                    "Entre pelo login para registrar movimentações.\nA movimentação é registrada com o seu usuário.",
+                    "Nova movimentação", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        // Só produtos ativos que já têm estoque podem ser movimentados.
+        new SwingWorker<java.util.List<Estoque>, Void>() {
+            @Override protected java.util.List<Estoque> doInBackground() {
+                java.util.List<Estoque> ativos = new ArrayList<>();
+                for (Estoque e : new EstoqueDAO().listar()) {
+                    if (e.getProduto().isAtivo()) ativos.add(e);
+                }
+                return ativos;
+            }
+            @Override protected void done() {
+                try {
+                    java.util.List<Estoque> estoques = get();
+                    if (estoques.isEmpty()) {
+                        JOptionPane.showMessageDialog(AdministradorGUI.this,
+                                "Nenhum produto ativo possui estoque.\nCadastre um estoque na aba Estoque.",
+                                "Nova movimentação", JOptionPane.INFORMATION_MESSAGE);
+                        return;
+                    }
+                    showMovementDialog(estoques);
+                } catch (Exception e) { showError(e); }
+            }
+        }.execute();
+    }
+
+    private void showMovementDialog(java.util.List<Estoque> estoques) {
+        JComboBox<Estoque> produto = new JComboBox<>(estoques.toArray(new Estoque[0]));
+        produto.setFont(font(13, false));
+        produto.setBackground(WHITE);
+        produto.setForeground(TEXT);
+        produto.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if (value instanceof Estoque) {
+                    Estoque e = (Estoque) value;
+                    setText("#" + e.getProduto().getIdProduto() + " — " + e.getProduto().getNome()
+                            + "  (atual: " + e.getQuantidade() + ")");
+                }
+                setBorder(new EmptyBorder(6, 10, 6, 10));
+                return this;
+            }
+        });
+
+        String[] tipos = {"ENTRADA", "SAIDA"};
+        JComboBox<String> tipo = new JComboBox<>(tipos);
+        tipo.setFont(font(13, false));
+        tipo.setBackground(WHITE);
+        tipo.setForeground(TEXT);
+        tipo.setRenderer(new DefaultListCellRenderer() {
+            @Override public Component getListCellRendererComponent(JList<?> list, Object value,
+                    int index, boolean selected, boolean focus) {
+                super.getListCellRendererComponent(list, value, index, selected, focus);
+                if ("ENTRADA".equals(value)) setText("Entrada (soma ao estoque)");
+                else if ("SAIDA".equals(value)) setText("Saída (subtrai do estoque)");
+                setBorder(new EmptyBorder(6, 10, 6, 10));
+                return this;
+            }
+        });
+
+        JTextField quantidade = formField("");
+        JTextField motivo = formField("");
+
+        ActionButton save = new ActionButton("Registrar movimentação", true);
+        JDialog dialog = stockDialog("Nova movimentação", "Nova movimentação de estoque",
+                "A quantidade do estoque é atualizada junto com o registro da movimentação.",
+                new Object[][]{{"PRODUTO", produto}, {"TIPO", tipo},
+                        {"QUANTIDADE", quantidade}, {"MOTIVO", motivo}}, save);
+
+        save.addActionListener(e -> {
+            Estoque estoque = (Estoque) produto.getSelectedItem();
+            String tipoSelecionado = (String) tipo.getSelectedItem();
+            int qtd;
+            try {
+                qtd = Integer.parseInt(quantidade.getText().trim());
+                if (qtd <= 0) throw new NumberFormatException();
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(dialog, "Informe uma quantidade inteira maior que zero.",
+                        "Nova movimentação", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            String textoMotivo = motivo.getText().trim();
+            if (textoMotivo.isEmpty() || textoMotivo.length() > 255) {
+                JOptionPane.showMessageDialog(dialog, "Informe o motivo da movimentação (até 255 caracteres).",
+                        "Nova movimentação", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
+            int idProduto = estoque.getProduto().getIdProduto();
+            int idUsuario = usuarioLogado.getId();
+            save.setEnabled(false);
+            new SwingWorker<Void, Void>() {
+                @Override protected Void doInBackground() throws Exception {
+                    // Cada método atualiza o estoque e grava a movimentação na mesma transação.
+                    EstoqueService service = new EstoqueService();
+                    if ("ENTRADA".equals(tipoSelecionado)) service.adicionarEstoque(idProduto, idUsuario, qtd, textoMotivo);
+                    else service.retirarEstoque(idProduto, idUsuario, qtd, textoMotivo);
+                    return null;
+                }
+                @Override protected void done() {
+                    save.setEnabled(true);
+                    try {
+                        get();
+                        dialog.dispose();
+                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Movimentação registrada com sucesso.");
+                        reloadIfVisible("Movimentações de Estoque");
+                    } catch (java.util.concurrent.ExecutionException ex) {
+                        JOptionPane.showMessageDialog(dialog,
+                                "Não foi possível registrar a movimentação.\n" + serviceErrorMessage(ex),
+                                "Nova movimentação", JOptionPane.ERROR_MESSAGE);
+                    } catch (Exception ex) { showError(ex); }
+                }
+            }.execute();
+        });
         dialog.setVisible(true);
     }
 

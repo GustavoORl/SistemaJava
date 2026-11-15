@@ -18,7 +18,7 @@ public class EstoqueDAO {
             movimentacao_estoqueDAO
             PerdaDAO*/
 
-    public void cadastrar(Estoque estoque){
+    public boolean cadastrar(Estoque estoque){
         String sql = "INSERT INTO estoque (id_produto, quantidade) "
                    + "VALUES (?, ?)"; 
 
@@ -28,11 +28,29 @@ public class EstoqueDAO {
             stmt.setInt(1, estoque.getProduto().getIdProduto());
             stmt.setInt(2, estoque.getQuantidade());
             
-            stmt.executeUpdate();
+            return stmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return false;
+    }
+
+    public boolean excluir(int idEstoque){
+        String sql = "DELETE FROM estoque WHERE id_estoque = ?";
+
+        try (Connection conn = Conexao.getConnection();
+            PreparedStatement stmt = conn.prepareStatement(sql)){
+
+            stmt.setInt(1, idEstoque);
+
+            return stmt.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.out.println("Erro ao excluir estoque!");
+            e.printStackTrace();
+        }
+        return false;
     }
 
     public List<Estoque> listar() {
@@ -250,6 +268,40 @@ public class EstoqueDAO {
             } catch (SQLException e) {
                 System.out.println("Erro ao retirar quantidade do estoque!");
                 e.printStackTrace();
+            }
+        }
+
+        // Versão transacional: usa a conexão recebida e propaga os erros para o rollback.
+        public void retirarQuantidade(Connection conn, int idProduto, int quantidade)
+                throws SQLException, EstoqueInsuficienteException {
+
+            if (quantidade <= 0) {
+                throw new IllegalArgumentException(
+                    "A quantidade deve ser maior que zero."
+                );
+            }
+
+            String sql = "UPDATE estoque "
+                    + "SET quantidade = quantidade - ?, "
+                    + "data_atualizacao = ? "
+                    + "WHERE id_produto = ? "
+                    + "AND quantidade >= ?";
+
+            try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setInt(1, quantidade);
+                stmt.setTimestamp(
+                    2,
+                    Timestamp.valueOf(java.time.LocalDateTime.now())
+                );
+                stmt.setInt(3, idProduto);
+                stmt.setInt(4, quantidade);
+
+                if (stmt.executeUpdate() == 0) {
+                    throw new EstoqueInsuficienteException(
+                        "Estoque insuficiente para realizar a saída."
+                    );
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 package services;
 
 import dao.EstoqueDAO;
+import exception.EstoqueInsuficienteException;
 import exception.ProdutoNaoEncontradoException;
 
 import java.sql.Connection;
@@ -85,14 +86,69 @@ public class EstoqueService {
 }
 
     public void retirarEstoque(int idProduto, int idUsuario,
-                              int quantidade, String motivo) throws ProdutoNaoEncontradoException {
+                              int quantidade, String motivo)
+            throws ProdutoNaoEncontradoException, EstoqueInsuficienteException {
         if (quantidade <= 0) {
             throw new IllegalArgumentException("A quantidade deve ser maior que zero.");
         }
         if (idProduto <= 0 || idUsuario <= 0) {
             throw new IllegalArgumentException("Os IDs devem ser maiores que zero.");
         }
-    } 
+        if (motivo == null || motivo.isBlank()) {
+            throw new IllegalArgumentException("O motivo não pode ser nulo ou vazio.");
+        }
+
+        try (Connection conn = Conexao.getConnection()) {
+
+            conn.setAutoCommit(false);
+
+            try {
+                Estoque estoque = estoqueDAO.buscarPorIdProduto(idProduto);
+
+                if (estoque == null) {
+                    throw new ProdutoNaoEncontradoException(
+                        "Estoque não encontrado para o produto com ID: " + idProduto
+                    );
+                }
+
+                Produto produto = estoque.getProduto();
+
+                if (!produto.isAtivo()) {
+                    throw new IllegalArgumentException("O produto está inativo.");
+                }
+
+                Usuario usuario = new Usuario();
+                usuario.setId(idUsuario);
+
+                MovimentacaoEstoque movimentacao = new MovimentacaoEstoque();
+                movimentacao.setProduto(produto);
+                movimentacao.setUsuario(usuario);
+                movimentacao.setTipo("SAIDA");
+                movimentacao.setQuantidade(quantidade);
+                movimentacao.setMotivo(motivo);
+
+                estoqueDAO.retirarQuantidade(conn, idProduto, quantidade);
+
+                movimentacaoDAO.cadastrar(conn, movimentacao);
+
+                conn.commit();
+
+            } catch (SQLException | ProdutoNaoEncontradoException
+                     | EstoqueInsuficienteException | RuntimeException e) {
+                try {
+                    conn.rollback();
+                } catch (SQLException rollbackErro) {
+                    e.addSuppressed(rollbackErro);
+                }
+                throw e;
+            }
+
+        } catch (SQLException e) {
+            throw new IllegalStateException(
+                "Erro ao retirar estoque e registrar movimentação.", e
+            );
+        }
+    }
 
     public void ajustarEstoque(int idProduto, int idUsuario,
         int novaQuantidade, String motivo) throws ProdutoNaoEncontradoException {

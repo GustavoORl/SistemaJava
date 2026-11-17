@@ -26,8 +26,7 @@ public class ProdutoDAO {
                         stmt.setInt(6, produto.getEstoqueMinimo());
                         stmt.setInt(7,produto.getCategoria().getId());
                         stmt.setBoolean(8, produto.isAtivo());
-                        
- 
+
                 stmt.executeUpdate();
 
             } catch (SQLException e) {
@@ -121,7 +120,6 @@ public class ProdutoDAO {
             return null;
         }
 
-        // Busca um produto pelo id (ativo ou não), com categoria quando houver.
         public Produto buscarPorId(int id) {
             String sql = "SELECT p.*, "
                     + "c.nome AS categoria_nome, "
@@ -205,9 +203,6 @@ public class ProdutoDAO {
             }
             return false;
         }
-
-
-
 
 public Produto buscarPorCodigoExato(String codigo) {
 
@@ -334,8 +329,5 @@ private Produto mapearProdutoBusca(ResultSet rs)
     return produto;
 }
 
-
 }
-
-
 

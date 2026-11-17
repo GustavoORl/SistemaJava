@@ -7,7 +7,6 @@ public class Cargo {
     String nome;
     private Set<Permissao> permissoes;
 
-
     public int getId() {
         return id;
     }
@@ -27,5 +26,4 @@ public class Cargo {
         this.permissoes = permissoes;
     }
 
-    
 }

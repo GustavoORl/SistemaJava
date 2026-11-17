@@ -11,7 +11,6 @@ public class itemVenda {
     private BigDecimal desconto;
     private BigDecimal subtotal;
 
-
     public int getIdItem() {
         return idItem;
     }

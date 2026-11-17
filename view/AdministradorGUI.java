@@ -22,19 +22,8 @@ import javax.swing.border.*;
 import javax.swing.event.*;
 import javax.swing.table.*;
 
-/**
- * Painel administrativo CoStock.
- *
- * Responsabilidades:
- * - Apresentar a identidade visual e a navegação;
- * - Solicitar dados ao AdministradorConsultaDAO, sem SQL na interface;
- * - Exibir indicadores, tabelas, filtros e mensagens de erro.
- *
- * As consultas são executadas em SwingWorker para não travar a janela.
- */
 public class AdministradorGUI extends JFrame {
 
-    // Paleta: verde principal solicitado e tons neutros com contraste.
     private static final Color PRIMARY = Color.decode("#173C38");
     private static final Color PRIMARY_HOVER = Color.decode("#24544E");
     private static final Color PRIMARY_LIGHT = Color.decode("#E5F0ED");
@@ -83,7 +72,6 @@ public class AdministradorGUI extends JFrame {
         navigate("Início");
     }
 
-    // Tipografia centralizada para preservar a hierarquia visual.
     private static Font font(int size, boolean bold) {
         return new Font("SansSerif", bold ? Font.BOLD : Font.PLAIN, size);
     }
@@ -273,7 +261,6 @@ public class AdministradorGUI extends JFrame {
         scroll.getVerticalScrollBar().setUnitIncrement(18);
         content.add(scroll, BorderLayout.CENTER);
 
-        // Busca os totais reais sem bloquear a interface gráfica.
         final long version = requestVersion;
         new SwingWorker<String[], Void>() {
             @Override protected String[] doInBackground() {
@@ -357,8 +344,6 @@ public class AdministradorGUI extends JFrame {
                 BorderFactory.createLineBorder(BORDER), new EmptyBorder(11, 14, 11, 14)));
         tools.add(searchField, BorderLayout.CENTER);
 
-        // Um único listener acompanha a pesquisa durante toda a vida desta tela.
-        // O filtro é reaplicado mesmo depois de atualizar os dados do banco.
         searchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { applySearchFilter(); }
             @Override public void removeUpdate(DocumentEvent e) { applySearchFilter(); }
@@ -367,7 +352,6 @@ public class AdministradorGUI extends JFrame {
         ActionButton refresh = new ActionButton("Atualizar listagem", true);
         refresh.addActionListener(e -> loadListing(section));
         if (section.equals("Produtos")) {
-            // Ações sobre o produto selecionado na tabela.
             JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
             ActionButton edit = new ActionButton("Atualizar produto", false);
             edit.addActionListener(e -> editSelectedProduct());
@@ -378,7 +362,6 @@ public class AdministradorGUI extends JFrame {
             actions.add(refresh);
             tools.add(actions, BorderLayout.EAST);
         } else if (section.equals("Usuários")) {
-            // Ações de cadastro e manutenção de usuários.
             JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
             ActionButton create = new ActionButton("Novo usuário", false);
             create.addActionListener(e -> createUser());
@@ -392,7 +375,6 @@ public class AdministradorGUI extends JFrame {
             actions.add(refresh);
             tools.add(actions, BorderLayout.EAST);
         } else if (section.equals("Estoque")) {
-            // Ações de cadastro, ajuste de quantidade e exclusão de estoques.
             JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
             ActionButton create = new ActionButton("Novo estoque", false);
             create.addActionListener(e -> createStock());
@@ -406,7 +388,6 @@ public class AdministradorGUI extends JFrame {
             actions.add(refresh);
             tools.add(actions, BorderLayout.EAST);
         } else if (section.equals("Movimentações de Estoque")) {
-            // Registro de entradas e saídas de estoque.
             JPanel actions = transparent(new FlowLayout(FlowLayout.RIGHT, 10, 0));
             ActionButton create = new ActionButton("Nova movimentação", false);
             create.addActionListener(e -> createMovement());
@@ -472,7 +453,6 @@ public class AdministradorGUI extends JFrame {
                     for (int i = 0; i < target.getColumnCount(); i++) {
                         target.getColumnModel().getColumn(i).setPreferredWidth(165);
                     }
-                    // Substitui o sorter da listagem após carregar o modelo atualizado.
                     currentSorter = new TableRowSorter<>(model);
                     target.setRowSorter(currentSorter);
                     applySearchFilter();
@@ -484,8 +464,6 @@ public class AdministradorGUI extends JFrame {
         }.execute();
     }
 
-    // Pesquisa por qualquer coluna, sem distinguir maiúsculas/minúsculas.
-    // Pattern.quote impede que caracteres como +, (, [, * sejam tratados como regex.
     private void applySearchFilter() {
         if (currentSorter == null || searchField == null || currentTable == null) return;
 
@@ -499,9 +477,6 @@ public class AdministradorGUI extends JFrame {
         }
     }
 
-    // ===== Auxiliares compartilhados pelas ações de Produtos e Usuários =====
-
-    // Retorna o id da linha selecionada (coluna informada), ou null se nada foi selecionado.
     private Integer selectedId(String idColumnName, String entityName) {
         if (currentTable == null || currentTable.getSelectedRow() < 0) {
             JOptionPane.showMessageDialog(this, "Selecione um " + entityName + " na tabela.",
@@ -518,14 +493,11 @@ public class AdministradorGUI extends JFrame {
         return value == null ? null : Integer.valueOf(value.toString());
     }
 
-    // Recarrega só se a tela ainda estiver aberta (o usuário pode ter navegado).
     private void reloadIfVisible(String section) {
         if (section.equals(currentPage) && currentTable != null && tableStatus != null) {
             loadListing(section);
         }
     }
-
-    // ===== Produtos: atualizar e excluir (usa ProdutoDAO e CategoriaDAO) =====
 
     private void deleteSelectedProduct() {
         Integer id = selectedId("ID PRODUTO", "produto");
@@ -560,7 +532,6 @@ public class AdministradorGUI extends JFrame {
         Integer id = selectedId("ID PRODUTO", "produto");
         if (id == null) return;
 
-        // Carrega o produto (com categoria) e as categorias disponíveis.
         new SwingWorker<Object[], Void>() {
             @Override protected Object[] doInBackground() {
                 return new Object[]{new ProdutoDAO().buscarPorId(id), new CategoriaDAO().listar()};
@@ -661,7 +632,6 @@ public class AdministradorGUI extends JFrame {
         save.addActionListener(e -> {
             try {
                 if (nome.getText().trim().isEmpty()) throw new IllegalArgumentException("Informe o nome do produto.");
-                // Limites conforme as colunas da tabela produtos.
                 if (nome.getText().trim().length() > 150) throw new IllegalArgumentException("O nome pode ter no máximo 150 caracteres.");
                 if (descricao.getText().trim().length() > 255) throw new IllegalArgumentException("A descrição pode ter no máximo 255 caracteres.");
                 if (codigo.getText().trim().length() > 50) throw new IllegalArgumentException("O código de barras pode ter no máximo 50 caracteres.");
@@ -724,8 +694,6 @@ public class AdministradorGUI extends JFrame {
         dialog.setLocationRelativeTo(this);
         dialog.setVisible(true);
     }
-
-    // ===== Usuários: criar, atualizar e excluir (usa UsuarioDAO e CargoDAO) =====
 
     private void createUser() {
         new SwingWorker<java.util.List<Cargo>, Void>() {
@@ -796,7 +764,6 @@ public class AdministradorGUI extends JFrame {
         }.execute();
     }
 
-    // usuario == null abre o formulário em modo de cadastro.
     private void showUserDialog(Usuario usuario, java.util.List<Cargo> cargos) {
         final boolean novo = usuario == null;
         final Usuario alvo = novo ? new Usuario() : usuario;
@@ -879,7 +846,6 @@ public class AdministradorGUI extends JFrame {
             String textoEndereco = endereco.getText().trim();
             String textoSenha = new String(senha.getPassword());
             String erro = null;
-            // Limites conforme as colunas da tabela usuarios.
             if (textoNome.isEmpty()) erro = "Informe o nome do usuário.";
             else if (textoNome.length() > 100) erro = "O nome pode ter no máximo 100 caracteres.";
             else if (!textoEmail.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+")) erro = "Informe um e-mail válido.";
@@ -939,10 +905,6 @@ public class AdministradorGUI extends JFrame {
         dialog.setVisible(true);
     }
 
-    // ===== Estoque: criar, editar quantidade e excluir (usa EstoqueDAO e EstoqueService) =====
-
-    // Erros de regra (produto inativo, estoque insuficiente...) já vêm com mensagem pronta do
-    // EstoqueService; falhas de banco chegam embrulhadas em IllegalStateException.
     private static String serviceErrorMessage(java.util.concurrent.ExecutionException ex) {
         Throwable cause = ex.getCause();
         return cause instanceof IllegalStateException && cause.getCause() != null
@@ -950,8 +912,6 @@ public class AdministradorGUI extends JFrame {
                 : cause.getMessage();
     }
 
-    // Janela padrão (título, subtítulo, formulário e botões) usada pelos formulários de estoque
-    // e de movimentações.
     private JDialog stockDialog(String dialogTitle, String heading, String subtitle,
             Object[][] rows, ActionButton save) {
         JDialog dialog = new JDialog(this, dialogTitle, true);
@@ -994,7 +954,6 @@ public class AdministradorGUI extends JFrame {
     }
 
     private void createStock() {
-        // Lista apenas produtos que ainda não têm estoque (id_produto é único na tabela estoque).
         new SwingWorker<java.util.List<Produto>, Void>() {
             @Override protected java.util.List<Produto> doInBackground() {
                 Set<Integer> comEstoque = new HashSet<>();
@@ -1148,7 +1107,6 @@ public class AdministradorGUI extends JFrame {
             save.setEnabled(false);
             new SwingWorker<Void, Void>() {
                 @Override protected Void doInBackground() throws Exception {
-                    // Atualiza a quantidade e registra a movimentação na mesma transação.
                     new EstoqueService().ajustarEstoque(produto.getIdProduto(), usuarioLogado.getId(), qtd, textoMotivo);
                     return null;
                 }
@@ -1198,8 +1156,6 @@ public class AdministradorGUI extends JFrame {
         }.execute();
     }
 
-    // ===== Movimentações de Estoque: criar (usa EstoqueService) =====
-
     private void createMovement() {
         if (usuarioLogado == null) {
             JOptionPane.showMessageDialog(this,
@@ -1207,7 +1163,6 @@ public class AdministradorGUI extends JFrame {
                     "Nova movimentação", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
-        // Só produtos ativos que já têm estoque podem ser movimentados.
         new SwingWorker<java.util.List<Estoque>, Void>() {
             @Override protected java.util.List<Estoque> doInBackground() {
                 java.util.List<Estoque> ativos = new ArrayList<>();
@@ -1299,7 +1254,6 @@ public class AdministradorGUI extends JFrame {
             save.setEnabled(false);
             new SwingWorker<Void, Void>() {
                 @Override protected Void doInBackground() throws Exception {
-                    // Cada método atualiza o estoque e grava a movimentação na mesma transação.
                     EstoqueService service = new EstoqueService();
                     if ("ENTRADA".equals(tipoSelecionado)) service.adicionarEstoque(idProduto, idUsuario, qtd, textoMotivo);
                     else service.retirarEstoque(idProduto, idUsuario, qtd, textoMotivo);
@@ -1371,7 +1325,6 @@ public class AdministradorGUI extends JFrame {
                 "Erro de consulta", JOptionPane.ERROR_MESSAGE);
     }
 
-    // Botão pintado manualmente: evita o tema do Windows apagar texto ou cores.
     private static class NavButton extends JButton {
         private boolean active;
         private boolean hovered;
@@ -1406,7 +1359,6 @@ public class AdministradorGUI extends JFrame {
         }
     }
 
-    // Botões de ação: fundo e texto com contraste explícito em todos os temas.
     private static class ActionButton extends JButton {
         private final boolean filled;
         private boolean hovered;
@@ -1436,7 +1388,6 @@ public class AdministradorGUI extends JFrame {
         }
     }
 
-    // Cabeçalho com cores próprias, independente do Look and Feel.
     private static class HeaderRenderer extends DefaultTableCellRenderer {
         HeaderRenderer() {
             setOpaque(true);
@@ -1454,7 +1405,6 @@ public class AdministradorGUI extends JFrame {
         }
     }
 
-    // Linhas alternadas e seleção visível melhoram a leitura de tabelas grandes.
     private static class BodyRenderer extends DefaultTableCellRenderer {
         BodyRenderer() { setBorder(new EmptyBorder(0, 12, 0, 12)); }
         @Override public Component getTableCellRendererComponent(JTable table, Object value,

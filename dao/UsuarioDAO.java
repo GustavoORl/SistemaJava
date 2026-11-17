@@ -53,7 +53,6 @@
                     cargo.setIdCargo(rs.getInt("id_cargo"));
                     cargo.setNome(rs.getString("nome_cargo"));
 
-
                     Usuario usuario = new Usuario(
                         rs.getInt("id_usuario"),
                         rs.getString("nome"),
@@ -66,7 +65,6 @@
                     );
                     
                     usuarios.add(usuario);
-                        
 
                 }
 
@@ -162,7 +160,6 @@
             return false;
         }
 
-    
 public Usuario autenticar(String email, String senha) {
 
     String sql = "SELECT u.*, c.nome AS nome_cargo "

@@ -19,7 +19,7 @@ public class EstoqueService {
     private final EstoqueDAO estoqueDAO = new EstoqueDAO();
     private final MovimentacaoEstoqueDAO movimentacaoDAO = new MovimentacaoEstoqueDAO();
 
-    public void adicionarEstoque(int idProduto, int idUsuario, //Esperar gustavo
+    public void adicionarEstoque(int idProduto, int idUsuario,
         int quantidade, String motivo) throws ProdutoNaoEncontradoException {
 
     if (quantidade <= 0) {

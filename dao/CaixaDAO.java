@@ -12,10 +12,6 @@ import model.Usuario;
 
 public class CaixaDAO {
 
-    // ============================================================
-    // CADASTRAR / ABRIR CAIXA
-    // ============================================================
-
     public boolean cadastrar(Caixa caixa) {
 
         String sql = """
@@ -29,7 +25,6 @@ public class CaixaDAO {
                      sql,
                      Statement.RETURN_GENERATED_KEYS)) {
 
-            // id_caixa é STRING
             stmt.setString(
                     1,
                     caixa.getIdCaixa()
@@ -59,10 +54,6 @@ public class CaixaDAO {
 
             stmt.executeUpdate();
 
-            // ====================================================
-            // RECUPERA O id_tabela_caixa GERADO PELO BANCO
-            // ====================================================
-
             try (ResultSet rs = stmt.getGeneratedKeys()) {
 
                 if (rs.next()) {
@@ -82,11 +73,6 @@ public class CaixaDAO {
             return false;
         }
     }
-
-
-    // ============================================================
-    // LISTAR TODOS OS CAIXAS
-    // ============================================================
 
     public List<Caixa> listar() {
 
@@ -128,14 +114,6 @@ public class CaixaDAO {
 
         return caixas;
     }
-
-
-    // ============================================================
-    // BUSCAR ABERTURA POR ID
-    // ============================================================
-    // Aqui usamos id_tabela_caixa, pois ele identifica
-    // unicamente uma abertura de caixa.
-    // ============================================================
 
     public Caixa buscarPorId(int idTabelaCaixa) {
 
@@ -181,11 +159,6 @@ public class CaixaDAO {
         return null;
     }
 
-
-    // ============================================================
-    // BUSCAR CAIXA ABERTO
-    // ============================================================
-
     public Caixa buscarCaixaAberto(String idCaixa) {
 
     String sql = """
@@ -225,12 +198,6 @@ public class CaixaDAO {
 
     return null;
 }
-
-
-
-    // ============================================================
-    // FECHAR CAIXA
-    // ============================================================
 
     public boolean fechar(
             int idTabelaCaixa,
@@ -276,11 +243,6 @@ public class CaixaDAO {
         }
     }
 
-
-    // ============================================================
-    // ATUALIZAR CAIXA
-    // ============================================================
-
     public boolean atualizar(Caixa caixa) {
 
         String sql = """
@@ -299,7 +261,6 @@ public class CaixaDAO {
         try (Connection conn = Conexao.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // id_caixa é STRING
             stmt.setString(
                     1,
                     caixa.getIdCaixa()
@@ -317,7 +278,6 @@ public class CaixaDAO {
                     )
             );
 
-            // Data de fechamento
             if (caixa.getDataFechamento() != null) {
 
                 stmt.setTimestamp(
@@ -335,13 +295,11 @@ public class CaixaDAO {
                 );
             }
 
-            // Valor de abertura
             stmt.setBigDecimal(
                     5,
                     caixa.getValorAbertura()
             );
 
-            // Valor de fechamento
             if (caixa.getValorFechamento() != null) {
 
                 stmt.setBigDecimal(
@@ -357,13 +315,11 @@ public class CaixaDAO {
                 );
             }
 
-            // Status
             stmt.setString(
                     7,
                     caixa.getStatus().name()
             );
 
-            // id_tabela_caixa
             stmt.setInt(
                     8,
                     caixa.getIdTabelaCaixa()
@@ -378,11 +334,6 @@ public class CaixaDAO {
             return false;
         }
     }
-
-
-    // ============================================================
-    // EXCLUIR ABERTURA
-    // ============================================================
 
     public boolean excluir(int idTabelaCaixa) {
 
@@ -409,11 +360,6 @@ public class CaixaDAO {
         }
     }
 
-
-    // ============================================================
-    // MAPEAR RESULTSET -> OBJETO CAIXA
-    // ============================================================
-
     private Caixa mapearCaixa(
             ResultSet rs
     ) throws SQLException {
@@ -421,25 +367,13 @@ public class CaixaDAO {
         Caixa caixa =
                 new Caixa();
 
-        // ========================================================
-        // ID DA ABERTURA
-        // ========================================================
-
         caixa.setIdTabelaCaixa(
                 rs.getInt("id_tabela_caixa")
         );
 
-        // ========================================================
-        // IDENTIFICADOR DO CAIXA
-        // ========================================================
-
         caixa.setIdCaixa(
                 rs.getString("id_caixa")
         );
-
-        // ========================================================
-        // USUÁRIO RESPONSÁVEL
-        // ========================================================
 
         Usuario usuario =
                 new Usuario();
@@ -456,10 +390,6 @@ public class CaixaDAO {
                 usuario
         );
 
-        // ========================================================
-        // DATA DE ABERTURA
-        // ========================================================
-
         Timestamp dataAbertura =
                 rs.getTimestamp(
                         "data_abertura"
@@ -471,10 +401,6 @@ public class CaixaDAO {
                     dataAbertura.toLocalDateTime()
             );
         }
-
-        // ========================================================
-        // DATA DE FECHAMENTO
-        // ========================================================
 
         Timestamp dataFechamento =
                 rs.getTimestamp(
@@ -488,29 +414,17 @@ public class CaixaDAO {
             );
         }
 
-        // ========================================================
-        // VALOR DE ABERTURA
-        // ========================================================
-
         caixa.setValorAbertura(
                 rs.getBigDecimal(
                         "valor_abertura"
                 )
         );
 
-        // ========================================================
-        // VALOR DE FECHAMENTO
-        // ========================================================
-
         caixa.setValorFechamento(
                 rs.getBigDecimal(
                         "valor_fechamento"
                 )
         );
-
-        // ========================================================
-        // STATUS
-        // ========================================================
 
         caixa.setStatus(
                 StatusCaixa.valueOf(
@@ -520,7 +434,6 @@ public class CaixaDAO {
 
         return caixa;
     }
-
 
 public ResumoFechamentoCaixa buscarResumoFechamento(
         int idTabelaCaixa
@@ -652,7 +565,6 @@ public ResumoFechamentoCaixa buscarResumoFechamento(
     return resumo;
 }
 
-
 public ResumoFechamentoCaixa fecharComConferencia(
         int idTabelaCaixa,
         BigDecimal valorContado,
@@ -710,9 +622,6 @@ public ResumoFechamentoCaixa fecharComConferencia(
 
         try {
 
-            // Bloqueia a sessão, impedindo que uma
-            // venda seja finalizada simultaneamente.
-
             try (PreparedStatement stmt =
                     conn.prepareStatement(sqlBloqueio)) {
 
@@ -735,9 +644,6 @@ public ResumoFechamentoCaixa fecharComConferencia(
                     }
                 }
             }
-
-            // Recalcula os valores usando a mesma
-            // conexão e dentro da transação.
 
             ResumoFechamentoCaixa resumo =
                     consultarResumoNaConexao(
@@ -813,10 +719,6 @@ public ResumoFechamentoCaixa fecharComConferencia(
         }
     }
 }
-
-// =====================================================
-// RESUMO FINANCEIRO NA MESMA CONEXÃO
-// =====================================================
 
 private ResumoFechamentoCaixa consultarResumoNaConexao(
         Connection conn,
@@ -944,9 +846,6 @@ private ResumoFechamentoCaixa consultarResumoNaConexao(
         }
     }
 
-    // Verifica se os pagamentos contabilizados
-    // correspondem ao valor das vendas finalizadas.
-
     if (resumo.getTotalVendas()
             .compareTo(totalRegistrado) != 0) {
 
@@ -961,6 +860,5 @@ private ResumoFechamentoCaixa consultarResumoNaConexao(
 
     return resumo;
 }
-
 
 }

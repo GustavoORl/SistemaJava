@@ -13,10 +13,6 @@ import  model.Estoque;
 import model.Produto;
 
 public class EstoqueDAO {
-    /*  
-            EstoqueDAO
-            movimentacao_estoqueDAO
-            PerdaDAO*/
 
     public boolean cadastrar(Estoque estoque){
         String sql = "INSERT INTO estoque (id_produto, quantidade) "
@@ -89,7 +85,6 @@ public class EstoqueDAO {
                     produto.setPrecoVenda(rs.getBigDecimal("preco_venda"));
                     produto.setEstoqueMinimo(rs.getInt("estoque_minimo"));
                     produto.setAtivo(rs.getBoolean("ativo"));
-            
 
                     Estoque estoque = new Estoque();
                     estoque.setIdEstoque(rs.getInt("id_estoque"));
@@ -271,7 +266,6 @@ public class EstoqueDAO {
             }
         }
 
-        // Versão transacional: usa a conexão recebida e propaga os erros para o rollback.
         public void retirarQuantidade(Connection conn, int idProduto, int quantidade)
                 throws SQLException, EstoqueInsuficienteException {
 
@@ -395,6 +389,5 @@ public class EstoqueDAO {
                     }
                 }
             }
-            
 
 }

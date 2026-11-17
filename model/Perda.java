@@ -55,5 +55,4 @@ public class Perda {
             this.dataPerda = dataPerda;
         }
 
-        
 }

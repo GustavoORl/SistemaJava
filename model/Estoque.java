@@ -9,7 +9,6 @@ public class Estoque {
     int quantidade;
     LocalDateTime dataAtualizacao;
 
-
     public int getId() {
         return id;
     }

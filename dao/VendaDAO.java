@@ -22,13 +22,10 @@ public class VendaDAO {
             conn.setAutoCommit(false);
 
             try {
-                // Confere a sessão de caixa dentro da transação.
                 validarCaixaAberto(conn, venda.getCaixa().getIdTabelaCaixa());
 
-                // Salva a venda e recupera seu ID.
                 int idVenda = inserirVenda(conn, venda);
 
-                // Insere os itens e atualiza o estoque.
                 for (itemVenda item : venda.getItens()) {
                     inserirItem(conn, idVenda, item);
                     baixarEstoque(conn, item);
@@ -40,7 +37,6 @@ public class VendaDAO {
                     );
                 }
 
-                // Registra os pagamentos.
                 for (Pagamento pagamento : venda.getPagamentos()) {
                     inserirPagamento(
                             conn,
@@ -79,10 +75,6 @@ public class VendaDAO {
             }
         }
     }
-
-    // =====================================================
-    // VALIDAR VENDA
-    // =====================================================
 
     private void validarVenda(Venda venda) throws SQLException {
 
@@ -175,10 +167,6 @@ public class VendaDAO {
         venda.setValorTotal(totalCalculado);
     }
 
-    // =====================================================
-    // VALIDAR CAIXA
-    // =====================================================
-
     private void validarCaixaAberto(
             Connection conn,
             int idTabelaCaixa
@@ -211,10 +199,6 @@ public class VendaDAO {
             }
         }
     }
-
-    // =====================================================
-    // INSERIR VENDA
-    // =====================================================
 
     private int inserirVenda(
             Connection conn,
@@ -264,10 +248,6 @@ public class VendaDAO {
         throw new SQLException("Não foi possível obter o ID da venda.");
     }
 
-    // =====================================================
-    // INSERIR ITEM
-    // =====================================================
-
     private void inserirItem(
             Connection conn,
             int idVenda,
@@ -309,10 +289,6 @@ public class VendaDAO {
         }
     }
 
-    // =====================================================
-    // BAIXAR ESTOQUE
-    // =====================================================
-
     private void baixarEstoque(
             Connection conn,
             itemVenda item
@@ -344,10 +320,6 @@ public class VendaDAO {
             }
         }
     }
-
-    // =====================================================
-    // REGISTRAR MOVIMENTAÇÃO DE ESTOQUE
-    // =====================================================
 
     private void registrarMovimentacao(
             Connection conn,
@@ -381,10 +353,6 @@ public class VendaDAO {
         }
     }
 
-    // =====================================================
-    // INSERIR PAGAMENTO
-    // =====================================================
-
     private void inserirPagamento(
             Connection conn,
             int idVenda,
@@ -412,8 +380,6 @@ public class VendaDAO {
 
             stmt.setInt(1, idVenda);
 
-            // No banco atual, pagamentos.id_tabela_caixa
-            // referencia caixas.id_tabela_caixa.
             stmt.setInt(2, idTabelaCaixa);
 
             stmt.setInt(3, idFormaPagamento);
@@ -429,10 +395,6 @@ public class VendaDAO {
             stmt.executeUpdate();
         }
     }
-
-    // =====================================================
-    // BUSCAR FORMA DE PAGAMENTO
-    // =====================================================
 
     private int buscarFormaPagamento(
             Connection conn,

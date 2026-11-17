@@ -4,6 +4,27 @@
   "configurations": [
     {
       "type": "java",
+      "name": "main",
+      "request": "launch",
+      "mainClass": "app.main",
+      "projectName": "SistemaJava_b1781c5a"
+    },
+    {
+      "type": "java",
+      "name": "LoginGUI",
+      "request": "launch",
+      "mainClass": "view.LoginGUI",
+      "projectName": "SistemaJava_b1781c5a"
+    },
+    {
+      "type": "java",
+      "name": "CaixaAberturaGUI",
+      "request": "launch",
+      "mainClass": "view.CaixaAberturaGUI",
+      "projectName": "SistemaJava_b1781c5a"
+    },
+    {
+      "type": "java",
       "name": "LoginGUI",
       "request": "launch",
       "mainClass": "view.LoginGUI",

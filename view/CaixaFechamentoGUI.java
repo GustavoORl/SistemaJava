@@ -20,18 +20,10 @@ import java.util.Locale;
 
 public class CaixaFechamentoGUI extends JFrame {
 
-    // =====================================================
-    // DADOS
-    // =====================================================
-
     private final Caixa caixa;
     private final CaixaDAO caixaDAO = new CaixaDAO();
 
     private ResumoFechamentoCaixa resumo;
-
-    // =====================================================
-    // CORES
-    // =====================================================
 
     private static final Color VERDE_ESCURO =
             new Color(23, 60, 56);
@@ -50,10 +42,6 @@ public class CaixaFechamentoGUI extends JFrame {
 
     private static final Color VERDE =
             new Color(30, 125, 90);
-
-    // =====================================================
-    // COMPONENTES
-    // =====================================================
 
     private JLabel lblOperador;
     private JLabel lblDataAbertura;
@@ -79,10 +67,6 @@ public class CaixaFechamentoGUI extends JFrame {
     private JButton btnCancelar;
     private JButton btnAtualizar;
 
-    // =====================================================
-    // FORMATAÇÃO
-    // =====================================================
-
     private final NumberFormat formatoMoeda =
             NumberFormat.getCurrencyInstance(
                     new Locale("pt", "BR")
@@ -92,10 +76,6 @@ public class CaixaFechamentoGUI extends JFrame {
             DateTimeFormatter.ofPattern(
                     "dd/MM/yyyy HH:mm"
             );
-
-    // =====================================================
-    // CONSTRUTOR
-    // =====================================================
 
     public CaixaFechamentoGUI(Caixa caixa) {
 
@@ -107,10 +87,6 @@ public class CaixaFechamentoGUI extends JFrame {
         preencherDados();
         carregarResumo();
     }
-
-    // =====================================================
-    // JANELA
-    // =====================================================
 
     private void configurarJanela() {
 
@@ -127,20 +103,12 @@ public class CaixaFechamentoGUI extends JFrame {
         );
     }
 
-    // =====================================================
-    // COMPONENTES
-    // =====================================================
-
     private void inicializarComponentes() {
 
         JPanel painelPrincipal =
                 new JPanel(new BorderLayout());
 
         painelPrincipal.setBackground(FUNDO);
-
-        // -------------------------------------------------
-        // CABEÇALHO
-        // -------------------------------------------------
 
         JPanel cabecalho =
                 new JPanel(new BorderLayout());
@@ -168,10 +136,6 @@ public class CaixaFechamentoGUI extends JFrame {
                 BorderLayout.WEST
         );
 
-        // -------------------------------------------------
-        // PAINEL CENTRAL
-        // -------------------------------------------------
-
         JPanel painelCentral =
                 new JPanel(new GridBagLayout());
 
@@ -191,10 +155,6 @@ public class CaixaFechamentoGUI extends JFrame {
         gbc.weightx = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.insets = new Insets(5, 5, 5, 5);
-
-        // -------------------------------------------------
-        // DADOS DA ABERTURA
-        // -------------------------------------------------
 
         adicionarTituloSecao(
                 painelCentral,
@@ -229,10 +189,6 @@ public class CaixaFechamentoGUI extends JFrame {
 
         adicionarSeparador(painelCentral, gbc);
 
-        // -------------------------------------------------
-        // RESUMO DAS VENDAS
-        // -------------------------------------------------
-
         adicionarTituloSecao(
                 painelCentral,
                 gbc,
@@ -257,10 +213,6 @@ public class CaixaFechamentoGUI extends JFrame {
         );
 
         adicionarSeparador(painelCentral, gbc);
-
-        // -------------------------------------------------
-        // FORMAS DE PAGAMENTO
-        // -------------------------------------------------
 
         adicionarTituloSecao(
                 painelCentral,
@@ -300,10 +252,6 @@ public class CaixaFechamentoGUI extends JFrame {
         );
 
         adicionarSeparador(painelCentral, gbc);
-
-        // -------------------------------------------------
-        // CONFERÊNCIA
-        // -------------------------------------------------
 
         adicionarTituloSecao(
                 painelCentral,
@@ -364,10 +312,6 @@ public class CaixaFechamentoGUI extends JFrame {
                 gbc
         );
 
-        // -------------------------------------------------
-        // OBSERVAÇÃO
-        // -------------------------------------------------
-
         JLabel tituloObservacao =
                 criarLabelTitulo(
                         "Observações do fechamento"
@@ -407,10 +351,6 @@ public class CaixaFechamentoGUI extends JFrame {
                 gbc
         );
 
-        // -------------------------------------------------
-        // RODAPÉ
-        // -------------------------------------------------
-
         JPanel rodape = new JPanel(
                 new FlowLayout(
                         FlowLayout.RIGHT,
@@ -442,10 +382,6 @@ public class CaixaFechamentoGUI extends JFrame {
         rodape.add(btnAtualizar);
         rodape.add(btnFechar);
 
-        // -------------------------------------------------
-        // SCROLL
-        // -------------------------------------------------
-
         JScrollPane scrollPrincipal =
                 new JScrollPane(painelCentral);
 
@@ -453,10 +389,6 @@ public class CaixaFechamentoGUI extends JFrame {
 
         scrollPrincipal.getVerticalScrollBar()
                 .setUnitIncrement(16);
-
-        // -------------------------------------------------
-        // MONTAGEM
-        // -------------------------------------------------
 
         painelPrincipal.add(
                 cabecalho,
@@ -475,10 +407,6 @@ public class CaixaFechamentoGUI extends JFrame {
 
         setContentPane(painelPrincipal);
     }
-
-    // =====================================================
-    // COMPONENTES AUXILIARES
-    // =====================================================
 
     private JLabel criarLabelTitulo(String texto) {
 
@@ -612,10 +540,6 @@ public class CaixaFechamentoGUI extends JFrame {
         gbc.insets = new Insets(5, 5, 5, 5);
     }
 
-    // =====================================================
-    // PREENCHER DADOS
-    // =====================================================
-
     private void preencherDados() {
 
         if (caixa == null) {
@@ -650,10 +574,6 @@ public class CaixaFechamentoGUI extends JFrame {
                 () -> txtValorFechamento.requestFocusInWindow()
         );
     }
-
-    // =====================================================
-    // CARREGAR RESUMO
-    // =====================================================
 
     private void carregarResumo() {
 
@@ -781,10 +701,6 @@ public class CaixaFechamentoGUI extends JFrame {
         atualizarDiferenca();
     }
 
-    // =====================================================
-    // EVENTOS
-    // =====================================================
-
     private void configurarEventos() {
 
         btnCancelar.addActionListener(
@@ -820,10 +736,6 @@ public class CaixaFechamentoGUI extends JFrame {
         });
     }
 
-    // =====================================================
-    // CONVERTER VALOR
-    // =====================================================
-
     private BigDecimal converterValor(
             String texto
     ) {
@@ -840,7 +752,6 @@ public class CaixaFechamentoGUI extends JFrame {
                 .replace("R$", "")
                 .replace(" ", "");
 
-        // Formato brasileiro: 1.250,50
         if (valor.contains(",")) {
 
             valor = valor.replace(".", "")
@@ -869,10 +780,6 @@ public class CaixaFechamentoGUI extends JFrame {
                 RoundingMode.UNNECESSARY
         );
     }
-
-    // =====================================================
-    // ATUALIZAR DIFERENÇA
-    // =====================================================
 
     private void atualizarDiferenca() {
 
@@ -951,10 +858,6 @@ public class CaixaFechamentoGUI extends JFrame {
             lblSituacao.setForeground(CINZA);
         }
     }
-
-    // =====================================================
-    // FECHAR CAIXA
-    // =====================================================
 
     private void fecharCaixa() {
 

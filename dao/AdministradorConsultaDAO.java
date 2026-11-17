@@ -3,7 +3,6 @@ package dao;
 import java.sql.*;
 import javax.swing.table.DefaultTableModel;
 
-/** Consultas somente de leitura para as listagens administrativas. */
 public class AdministradorConsultaDAO {
     public DefaultTableModel listar(String tabela) throws SQLException {
         if (!tabela.equals("usuarios") && !tabela.equals("cargos") &&

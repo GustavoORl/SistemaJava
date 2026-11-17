@@ -124,7 +124,6 @@ public class MovimentacaoEstoqueDAO {
                 + "WHERE m.id_produto = ? "
                 + "ORDER BY m.data_movimentacao DESC, m.id_movimentacao DESC";
 
-        
         try (Connection conn = Conexao.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
 

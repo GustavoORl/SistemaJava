@@ -26,8 +26,7 @@ public class ProdutoDAO {
                         stmt.setInt(6, produto.getEstoqueMinimo());
                         stmt.setInt(7,produto.getCategoria().getId());
                         stmt.setBoolean(8, produto.isAtivo());
-                        
- 
+
                 stmt.executeUpdate();
 
             } catch (SQLException e) {
@@ -121,7 +120,44 @@ public class ProdutoDAO {
             return null;
         }
 
-        public void atualizar(Produto produto){
+        public Produto buscarPorId(int id) {
+            String sql = "SELECT p.*, "
+                    + "c.nome AS categoria_nome, "
+                    + "c.descricao AS categoria_descricao "
+                    + "FROM produtos p "
+                    + "LEFT JOIN categorias c "
+                    + "ON p.id_categoria = c.id_categoria "
+                    + "WHERE p.id_produto = ?";
+
+            try (Connection conn = Conexao.getConnection();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+                stmt.setInt(1, id);
+
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        Produto produto = mapearProdutoBusca(rs);
+                        int idCategoria = rs.getInt("id_categoria");
+                        if (!rs.wasNull()) {
+                            Categoria categoria = new Categoria();
+                            categoria.setId(idCategoria);
+                            categoria.setNome(rs.getString("categoria_nome"));
+                            categoria.setDescricao(rs.getString("categoria_descricao"));
+                            produto.setCategoria(categoria);
+                        }
+                        return produto;
+                    }
+                }
+
+            } catch (SQLException e) {
+                System.out.println("Erro ao buscar produto!");
+                e.printStackTrace();
+            }
+
+            return null;
+        }
+
+        public boolean atualizar(Produto produto){
             String sql = "UPDATE produtos SET "
                        + "nome = ?, "
                        +"descricao = ?, "
@@ -146,28 +182,27 @@ public class ProdutoDAO {
                 stmt.setBoolean(8, produto.isAtivo());
                 stmt.setInt(9, produto.getIdProduto());
 
-                stmt.executeUpdate();
+                return stmt.executeUpdate() > 0;
 
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            return false;
         }
-        public void excluir(int id){
+        public boolean excluir(int id){
             String sql = "DELETE FROM produtos WHERE id_produto = ?";
             try (Connection conn = Conexao.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)){
                 
                     stmt.setInt(1, id);
 
-                    stmt.executeUpdate();
+                    return stmt.executeUpdate() > 0;
 
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            return false;
         }
-
-
-
 
 public Produto buscarPorCodigoExato(String codigo) {
 
@@ -294,8 +329,5 @@ private Produto mapearProdutoBusca(ResultSet rs)
     return produto;
 }
 
-
 }
-
-
 

@@ -12,7 +12,7 @@
 
     public class UsuarioDAO {
 
-        public void cadastrar(Usuario usuario) {
+        public boolean cadastrar(Usuario usuario) {
 
             String sql = "INSERT INTO usuarios (nome, telefone, email, endereco, senha, id_cargo, ativo) "
                     + "VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -28,11 +28,12 @@
                     stmt.setInt(6, usuario.getCargo().getId());
                     stmt.setBoolean(7, usuario.isAtivo());
 
-                stmt.executeUpdate();
+                return stmt.executeUpdate() > 0;
 
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            return false;
         }
 
         public List<Usuario> listar() {
@@ -52,7 +53,6 @@
                     cargo.setIdCargo(rs.getInt("id_cargo"));
                     cargo.setNome(rs.getString("nome_cargo"));
 
-
                     Usuario usuario = new Usuario(
                         rs.getInt("id_usuario"),
                         rs.getString("nome"),
@@ -65,7 +65,6 @@
                     );
                     
                     usuarios.add(usuario);
-                        
 
                 }
 
@@ -115,7 +114,7 @@
             return null;
         }
 
-        public void atualizar(Usuario usuario){
+        public boolean atualizar(Usuario usuario){
             String sql = "UPDATE usuarios SET "
                        + "nome = ?, "
                        + "telefone = ?, "
@@ -138,28 +137,29 @@
                 stmt.setBoolean(7, usuario.isAtivo());
                 stmt.setInt(8, usuario.getId());
 
-                stmt.executeUpdate();
+                return stmt.executeUpdate() > 0;
 
             } catch (SQLException e) {
                 e.printStackTrace();
             }
+            return false;
         }
 
-        public void excluir(int id) {
+        public boolean excluir(int id) {
             String sql = "DELETE FROM usuarios WHERE id_usuario = ?";
             try (Connection conn = Conexao.getConnection();
                 PreparedStatement stmt = conn.prepareStatement(sql)) {
             
                 stmt.setInt(1, id);
 
-                stmt.executeUpdate();
+                return stmt.executeUpdate() > 0;
             
             } catch (SQLException e) {
                     e.printStackTrace();
             }
+            return false;
         }
 
-    
 public Usuario autenticar(String email, String senha) {
 
     String sql = "SELECT u.*, c.nome AS nome_cargo "

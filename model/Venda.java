@@ -9,12 +9,10 @@ public class Venda {
     private LocalDateTime dataVenda;
     private BigDecimal valorTotal;
     private StatusVenda status;
-    //private Cliente cliente;
     private Usuario usuario;
     private Caixa caixa;
     private List<itemVenda> itens;
     private List<Pagamento> pagamentos;
-
 
     public int getIdVenda() {
         return idVenda;

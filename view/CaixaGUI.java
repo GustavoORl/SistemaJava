@@ -4,6 +4,7 @@ package view;
 import dao.ProdutoDAO;
 import dao.VendaDAO;
 
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -11,9 +12,13 @@ import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
+import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -23,24 +28,31 @@ import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.text.NumberFormat;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 import javax.swing.BorderFactory;
+import javax.swing.ButtonGroup;
 import javax.swing.DefaultListCellRenderer;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JPopupMenu;
+import javax.swing.JRootPane;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.JToggleButton;
+import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
@@ -63,10 +75,6 @@ import model.itemVenda;
 
 public class CaixaGUI extends JFrame {
 
-    // =====================================================
-    // COMPONENTES DA TELA
-    // =====================================================
-
     private JTextField txtBusca;
     private JTextField txtQuantidade;
 
@@ -82,10 +90,6 @@ public class CaixaGUI extends JFrame {
     private JButton btnFinalizar;
     private JButton btnSair;
 
-    // =====================================================
-    // COMPONENTES DA PESQUISA
-    // =====================================================
-
     private JPopupMenu popupSugestoes;
     private JList<Produto> listaSugestoes;
     private DefaultListModel<Produto> modeloSugestoes;
@@ -94,35 +98,19 @@ public class CaixaGUI extends JFrame {
 
     private int versaoPesquisa = 0;
 
-    // =====================================================
-    // FORMATAÇÃO DE MOEDA
-    // =====================================================
-
     private final NumberFormat formatoMoeda =
             NumberFormat.getCurrencyInstance(
                     new Locale("pt", "BR")
             );
 
-    // =====================================================
-    // USUÁRIO E CAIXA
-    // =====================================================
-
     private Usuario usuario;
     private Caixa caixa;
-
-    // =====================================================
-    // DAO E ITENS DA VENDA
-    // =====================================================
 
     private final ProdutoDAO produtoDAO = new ProdutoDAO();
     private final VendaDAO vendaDAO = new VendaDAO();
 
     private final List<ItemCarrinho> carrinho =
             new ArrayList<>();
-
-    // =====================================================
-    // CONSTRUTOR
-    // =====================================================
 
     public CaixaGUI(Usuario usuario, Caixa caixa) {
 
@@ -138,10 +126,6 @@ public class CaixaGUI extends JFrame {
         configurarTela();
     }
 
-    // =====================================================
-    // CONFIGURAÇÃO DA TELA
-    // =====================================================
-
     private void configurarTela() {
 
         if (usuario != null) {
@@ -151,10 +135,6 @@ public class CaixaGUI extends JFrame {
             );
         }
     }
-
-    // =====================================================
-    // CONFIGURAÇÃO DA JANELA
-    // =====================================================
 
     private void configurarJanela() {
 
@@ -168,10 +148,6 @@ public class CaixaGUI extends JFrame {
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
-
-    // =====================================================
-    // INICIALIZAÇÃO DOS COMPONENTES
-    // =====================================================
 
     private void inicializarComponentes() {
 
@@ -231,10 +207,6 @@ public class CaixaGUI extends JFrame {
         setContentPane(painelPrincipal);
     }
 
-    // =====================================================
-    // CABEÇALHO
-    // =====================================================
-
     private JPanel criarCabecalho() {
 
         JPanel painel =
@@ -279,10 +251,6 @@ public class CaixaGUI extends JFrame {
 
         return painel;
     }
-
-    // =====================================================
-    // BUSCA E ADIÇÃO DE PRODUTOS
-    // =====================================================
 
     private JPanel criarPainelBusca() {
 
@@ -391,10 +359,6 @@ public class CaixaGUI extends JFrame {
         return painel;
     }
 
-    // =====================================================
-    // CONFIGURAR SUGESTÕES DE PESQUISA
-    // =====================================================
-
     private void configurarPesquisaProdutos() {
 
         modeloSugestoes = new DefaultListModel<>();
@@ -480,7 +444,6 @@ public class CaixaGUI extends JFrame {
                 }
         );
 
-        // O popup não poderá receber foco automaticamente.
         popupSugestoes = new JPopupMenu();
 
         popupSugestoes.setFocusable(false);
@@ -493,7 +456,6 @@ public class CaixaGUI extends JFrame {
                 )
         );
 
-        // A lista também não recebe foco ao aparecer.
         listaSugestoes.setFocusable(false);
 
         listaSugestoes.setRequestFocusEnabled(false);
@@ -540,7 +502,6 @@ public class CaixaGUI extends JFrame {
                 }
         );
 
-        // O foco permanece sempre no campo de pesquisa.
         txtBusca.addKeyListener(
                 new KeyAdapter() {
 
@@ -573,7 +534,6 @@ public class CaixaGUI extends JFrame {
                 }
         );
 
-        // Seleção por clique duplo.
         listaSugestoes.addMouseListener(
                 new MouseAdapter() {
 
@@ -600,10 +560,6 @@ public class CaixaGUI extends JFrame {
                 }
         );
     }
-
-    // =====================================================
-    // MOVER SELEÇÃO SEM TIRAR O FOCO DA PESQUISA
-    // =====================================================
 
     private void moverSelecaoSugestao(int direcao) {
 
@@ -639,12 +595,7 @@ public class CaixaGUI extends JFrame {
 
         listaSugestoes.ensureIndexIsVisible(novoIndice);
 
-        // Não chamamos requestFocus na lista.
     }
-
-    // =====================================================
-    // AGENDAR PESQUISA
-    // =====================================================
 
     private void agendarPesquisa() {
 
@@ -665,10 +616,6 @@ public class CaixaGUI extends JFrame {
 
         timerPesquisa.restart();
     }
-
-    // =====================================================
-    // CARREGAR SUGESTÕES
-    // =====================================================
 
     private void carregarSugestoes() {
 
@@ -758,10 +705,6 @@ public class CaixaGUI extends JFrame {
         worker.execute();
     }
 
-    // =====================================================
-    // SELECIONAR SUGESTÃO
-    // =====================================================
-
     private void selecionarSugestao() {
 
         Produto selecionado =
@@ -776,10 +719,6 @@ public class CaixaGUI extends JFrame {
         adicionarProdutoEncontrado(selecionado);
     }
 
-    // =====================================================
-    // CANCELAR SUGESTÕES
-    // =====================================================
-
     private void cancelarSugestoes() {
 
         versaoPesquisa++;
@@ -791,10 +730,6 @@ public class CaixaGUI extends JFrame {
         modeloSugestoes.clear();
     }
 
-    // =====================================================
-    // CONFIRMAR PESQUISA
-    // =====================================================
-
     private void confirmarPesquisa() {
 
         String busca = txtBusca.getText().trim();
@@ -803,7 +738,6 @@ public class CaixaGUI extends JFrame {
             return;
         }
 
-        // Um código exato sempre tem prioridade.
         Produto produtoExato =
                 buscarProdutoExato(busca);
 
@@ -816,8 +750,6 @@ public class CaixaGUI extends JFrame {
             return;
         }
 
-        // Se o operador navegou pelas sugestões
-        // usando as setas, Enter seleciona o item.
         if (popupSugestoes.isVisible()
                 && listaSugestoes.getSelectedIndex() >= 0) {
 
@@ -828,10 +760,6 @@ public class CaixaGUI extends JFrame {
 
         adicionarProduto();
     }
-
-    // =====================================================
-    // BUSCAR PRODUTO EXATO
-    // =====================================================
 
     private Produto buscarProdutoExato(String busca) {
 
@@ -860,15 +788,10 @@ public class CaixaGUI extends JFrame {
 
         } catch (NumberFormatException e) {
 
-            // O texto não é um ID numérico.
         }
 
         return null;
     }
-
-    // =====================================================
-    // CARRINHO DE COMPRAS
-    // =====================================================
 
     private JPanel criarPainelCarrinho() {
 
@@ -999,10 +922,6 @@ public class CaixaGUI extends JFrame {
         return painel;
     }
 
-    // =====================================================
-    // RODAPÉ E BOTÕES
-    // =====================================================
-
     private JPanel criarRodape() {
 
         JPanel painel =
@@ -1080,10 +999,6 @@ public class CaixaGUI extends JFrame {
         return painel;
     }
 
-    // =====================================================
-    // CRIAR BOTÕES
-    // =====================================================
-
     private JButton criarBotao(
             String texto,
             Color cor
@@ -1113,10 +1028,6 @@ public class CaixaGUI extends JFrame {
 
         return botao;
     }
-
-    // =====================================================
-    // ADICIONAR PRODUTO
-    // =====================================================
 
     private void adicionarProduto() {
 
@@ -1159,10 +1070,6 @@ public class CaixaGUI extends JFrame {
 
         adicionarProdutoEncontrado(produtoEncontrado);
     }
-
-    // =====================================================
-    // ADICIONAR PRODUTO IDENTIFICADO
-    // =====================================================
 
     private void adicionarProdutoEncontrado(Produto produto) {
 
@@ -1255,10 +1162,6 @@ public class CaixaGUI extends JFrame {
         txtBusca.requestFocusInWindow();
     }
 
-    // =====================================================
-    // BUSCAR PRODUTO
-    // =====================================================
-
     private Produto buscarProduto(String busca) {
 
         if (busca == null || busca.trim().isEmpty()) {
@@ -1267,15 +1170,12 @@ public class CaixaGUI extends JFrame {
 
         String termo = busca.trim();
 
-        // Código de barras ou ID exato.
         Produto produto = buscarProdutoExato(termo);
 
         if (produto != null) {
             return produto;
         }
 
-        // Busca parcial: só retorna automaticamente
-        // se houver um único produto correspondente.
         List<Produto> encontrados =
                 produtoDAO.buscarSugestoes(termo);
 
@@ -1290,10 +1190,6 @@ public class CaixaGUI extends JFrame {
 
         return null;
     }
-
-    // =====================================================
-    // ATUALIZAR TABELA E TOTAL
-    // =====================================================
 
     private void atualizarTabela() {
 
@@ -1333,10 +1229,6 @@ public class CaixaGUI extends JFrame {
         atualizarTotal();
     }
 
-    // =====================================================
-    // CALCULAR TOTAL
-    // =====================================================
-
     private BigDecimal calcularTotal() {
 
         BigDecimal total = BigDecimal.ZERO;
@@ -1351,10 +1243,6 @@ public class CaixaGUI extends JFrame {
         return total;
     }
 
-    // =====================================================
-    // ATUALIZAR TOTAL
-    // =====================================================
-
     private void atualizarTotal() {
 
         BigDecimal total = calcularTotal();
@@ -1363,10 +1251,6 @@ public class CaixaGUI extends JFrame {
                 formatoMoeda.format(total)
         );
     }
-
-    // =====================================================
-    // REMOVER ITEM
-    // =====================================================
 
     private void removerItem() {
 
@@ -1392,10 +1276,6 @@ public class CaixaGUI extends JFrame {
 
         atualizarTabela();
     }
-
-    // =====================================================
-    // LIMPAR VENDA
-    // =====================================================
 
     private void limparVenda() {
 
@@ -1427,10 +1307,6 @@ public class CaixaGUI extends JFrame {
         }
     }
 
-    // =====================================================
-    // FINALIZAR VENDA
-    // =====================================================
-
     private void finalizarVenda() {
 
         if (carrinho.isEmpty()) {
@@ -1460,24 +1336,8 @@ public class CaixaGUI extends JFrame {
 
         BigDecimal total = calcularTotal();
 
-        String[] formasPagamento = {
-            "Dinheiro",
-            "Pix",
-            "Cartão de débito",
-            "Cartão de crédito"
-        };
-
         String formaSelecionada =
-                (String) JOptionPane.showInputDialog(
-                        this,
-                        "Total: " + formatoMoeda.format(total)
-                        + "\n\nSelecione a forma de pagamento:",
-                        "Finalizar venda",
-                        JOptionPane.QUESTION_MESSAGE,
-                        null,
-                        formasPagamento,
-                        formasPagamento[0]
-                );
+                exibirModalFinalizarVenda(total);
 
         if (formaSelecionada == null) {
             return;
@@ -1511,21 +1371,6 @@ public class CaixaGUI extends JFrame {
                 );
 
                 return;
-        }
-
-        int resposta = JOptionPane.showConfirmDialog(
-                this,
-                "Confirma a venda?\n\n"
-                + "Total: " + formatoMoeda.format(total)
-                + "\nPagamento: " + formaSelecionada
-                + "\nCaixa: " + caixa.getIdCaixa(),
-                "Confirmar venda",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE
-        );
-
-        if (resposta != JOptionPane.YES_OPTION) {
-            return;
         }
 
         Venda venda = new Venda();
@@ -1601,15 +1446,11 @@ public class CaixaGUI extends JFrame {
             int idVenda =
                     vendaDAO.finalizarVenda(venda);
 
-            JOptionPane.showMessageDialog(
-                    this,
-                    "Venda finalizada com sucesso!\n\n"
-                    + "Número da venda: " + idVenda
-                    + "\nTotal: " + formatoMoeda.format(total)
-                    + "\nPagamento: " + formaSelecionada
-                    + "\nCaixa: " + caixa.getIdCaixa(),
-                    "Venda concluída",
-                    JOptionPane.INFORMATION_MESSAGE
+            exibirModalVendaConcluida(
+                    idVenda,
+                    total,
+                    formaSelecionada,
+                    venda.getDataVenda()
             );
 
             carrinho.clear();
@@ -1642,9 +1483,632 @@ public class CaixaGUI extends JFrame {
         }
     }
 
-    // =====================================================
-    // SAIR
-    // =====================================================
+    private String exibirModalFinalizarVenda(BigDecimal total) {
+
+        final Color VERDE_ESCURO = new Color(23, 60, 56);
+        final Color VERDE = new Color(20, 125, 100);
+        final Color VERDE_CLARO = new Color(220, 240, 233);
+        final Color FUNDO = new Color(245, 247, 248);
+        final Color BORDA = new Color(220, 225, 228);
+        final Color TEXTO_SECUNDARIO = new Color(100, 100, 100);
+
+        final String[] resultado = { null };
+
+        JDialog dialog = new JDialog(
+                this,
+                "Finalizar venda",
+                true
+        );
+
+        dialog.setDefaultCloseOperation(
+                JDialog.DISPOSE_ON_CLOSE
+        );
+
+        JPanel cabecalho =
+                new JPanel(new BorderLayout(0, 4));
+
+        cabecalho.setBackground(VERDE_ESCURO);
+
+        cabecalho.setBorder(
+                BorderFactory.createEmptyBorder(
+                        18, 24, 18, 24
+                )
+        );
+
+        JLabel lblTitulo =
+                new JLabel("Finalizar venda");
+
+        lblTitulo.setFont(
+                new Font("Arial", Font.BOLD, 20)
+        );
+
+        lblTitulo.setForeground(Color.WHITE);
+
+        int qtdItens = carrinho.size();
+
+        JLabel lblSubtitulo = new JLabel(
+                "Caixa " + caixa.getIdCaixa()
+                + "  •  " + qtdItens
+                + (qtdItens == 1 ? " item" : " itens")
+        );
+
+        lblSubtitulo.setFont(
+                new Font("Arial", Font.PLAIN, 13)
+        );
+
+        lblSubtitulo.setForeground(
+                new Color(200, 220, 215)
+        );
+
+        cabecalho.add(lblTitulo, BorderLayout.NORTH);
+        cabecalho.add(lblSubtitulo, BorderLayout.SOUTH);
+
+        JPanel corpo =
+                new JPanel(new GridBagLayout());
+
+        corpo.setBackground(Color.WHITE);
+
+        corpo.setBorder(
+                BorderFactory.createEmptyBorder(
+                        20, 24, 20, 24
+                )
+        );
+
+        GridBagConstraints gbc =
+                new GridBagConstraints();
+
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.WEST;
+
+        JLabel lblTotalTitulo =
+                new JLabel("TOTAL DA COMPRA");
+
+        lblTotalTitulo.setFont(
+                new Font("Arial", Font.BOLD, 13)
+        );
+
+        lblTotalTitulo.setForeground(TEXTO_SECUNDARIO);
+
+        JLabel lblTotalValor =
+                new JLabel(formatoMoeda.format(total));
+
+        lblTotalValor.setFont(
+                new Font("Arial", Font.BOLD, 32)
+        );
+
+        lblTotalValor.setForeground(VERDE);
+
+        JLabel lblPagamento =
+                new JLabel("FORMA DE PAGAMENTO");
+
+        lblPagamento.setFont(
+                new Font("Arial", Font.BOLD, 13)
+        );
+
+        lblPagamento.setForeground(TEXTO_SECUNDARIO);
+
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, 0, 2, 0);
+        corpo.add(lblTotalTitulo, gbc);
+
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 18, 0);
+        corpo.add(lblTotalValor, gbc);
+
+        gbc.gridy = 2;
+        gbc.insets = new Insets(0, 0, 8, 0);
+        corpo.add(lblPagamento, gbc);
+
+        String[] formasPagamento = {
+            "Dinheiro",
+            "Pix",
+            "Cartão de débito",
+            "Cartão de crédito"
+        };
+
+        JPanel painelOpcoes =
+                new JPanel(new GridLayout(2, 2, 10, 10));
+
+        painelOpcoes.setBackground(Color.WHITE);
+
+        ButtonGroup grupo = new ButtonGroup();
+
+        JToggleButton[] opcoes =
+                new JToggleButton[formasPagamento.length];
+
+        for (int i = 0; i < formasPagamento.length; i++) {
+
+            String forma = formasPagamento[i];
+
+            JToggleButton opcao = new JToggleButton(
+                    (i + 1) + "  " + forma
+            );
+
+            opcao.setActionCommand(forma);
+
+            opcao.setFont(
+                    new Font("Arial", Font.BOLD, 14)
+            );
+
+            opcao.setFocusPainted(false);
+            opcao.setContentAreaFilled(false);
+            opcao.setOpaque(true);
+
+            opcao.setCursor(
+                    new Cursor(Cursor.HAND_CURSOR)
+            );
+
+            opcao.setPreferredSize(
+                    new Dimension(190, 54)
+            );
+
+            Runnable aplicarEstilo = () -> {
+
+                if (opcao.isSelected()) {
+
+                    opcao.setBackground(VERDE_CLARO);
+                    opcao.setForeground(VERDE);
+
+                    opcao.setBorder(
+                            BorderFactory.createLineBorder(
+                                    VERDE, 2
+                            )
+                    );
+
+                } else {
+
+                    opcao.setBackground(Color.WHITE);
+                    opcao.setForeground(VERDE_ESCURO);
+
+                    opcao.setBorder(
+                            BorderFactory.createCompoundBorder(
+                                    BorderFactory.createLineBorder(
+                                            BORDA, 1
+                                    ),
+                                    BorderFactory.createEmptyBorder(
+                                            1, 1, 1, 1
+                                    )
+                            )
+                    );
+                }
+            };
+
+            opcao.addItemListener(e -> aplicarEstilo.run());
+
+            aplicarEstilo.run();
+
+            opcao.addMouseListener(new MouseAdapter() {
+
+                @Override
+                public void mouseClicked(MouseEvent e) {
+
+                    if (e.getClickCount() == 2) {
+
+                        resultado[0] = forma;
+                        dialog.dispose();
+                    }
+                }
+            });
+
+            grupo.add(opcao);
+            painelOpcoes.add(opcao);
+            opcoes[i] = opcao;
+        }
+
+        opcoes[0].setSelected(true);
+
+        gbc.gridy = 3;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        corpo.add(painelOpcoes, gbc);
+
+        JPanel rodape = new JPanel(
+                new FlowLayout(FlowLayout.RIGHT, 10, 0)
+        );
+
+        rodape.setBackground(FUNDO);
+
+        rodape.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(
+                                1, 0, 0, 0, BORDA
+                        ),
+                        BorderFactory.createEmptyBorder(
+                                14, 24, 14, 24
+                        )
+                )
+        );
+
+        JButton btnCancelar =
+                criarBotao("Cancelar", TEXTO_SECUNDARIO);
+
+        JButton btnConfirmar =
+                criarBotao("Confirmar venda", VERDE);
+
+        for (JButton b : new JButton[] { btnCancelar, btnConfirmar }) {
+            b.setContentAreaFilled(false);
+            b.setOpaque(true);
+        }
+
+        btnCancelar.addActionListener(e -> dialog.dispose());
+
+        btnConfirmar.addActionListener(e -> {
+
+            if (grupo.getSelection() != null) {
+
+                resultado[0] =
+                        grupo.getSelection().getActionCommand();
+            }
+
+            dialog.dispose();
+        });
+
+        rodape.add(btnCancelar);
+        rodape.add(btnConfirmar);
+
+        JRootPane root = dialog.getRootPane();
+
+        root.setDefaultButton(btnConfirmar);
+
+        root.registerKeyboardAction(
+                e -> dialog.dispose(),
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
+
+        for (int i = 0; i < opcoes.length; i++) {
+
+            JToggleButton opcao = opcoes[i];
+
+            root.registerKeyboardAction(
+                    e -> opcao.setSelected(true),
+                    KeyStroke.getKeyStroke(
+                            KeyEvent.VK_1 + i, 0
+                    ),
+                    JComponent.WHEN_IN_FOCUSED_WINDOW
+            );
+
+            root.registerKeyboardAction(
+                    e -> opcao.setSelected(true),
+                    KeyStroke.getKeyStroke(
+                            KeyEvent.VK_NUMPAD1 + i, 0
+                    ),
+                    JComponent.WHEN_IN_FOCUSED_WINDOW
+            );
+        }
+
+        JPanel conteudo =
+                new JPanel(new BorderLayout());
+
+        conteudo.setBackground(Color.WHITE);
+
+        conteudo.add(cabecalho, BorderLayout.NORTH);
+        conteudo.add(corpo, BorderLayout.CENTER);
+        conteudo.add(rodape, BorderLayout.SOUTH);
+
+        dialog.setContentPane(conteudo);
+        dialog.setResizable(false);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+
+        SwingUtilities.invokeLater(
+                btnConfirmar::requestFocusInWindow
+        );
+
+        dialog.setVisible(true);
+
+        return resultado[0];
+    }
+
+    private void exibirModalVendaConcluida(
+            int idVenda,
+            BigDecimal total,
+            String formaPagamento,
+            LocalDateTime dataVenda
+    ) {
+
+        final Color VERDE_ESCURO = new Color(23, 60, 56);
+        final Color VERDE = new Color(20, 125, 100);
+        final Color VERDE_CLARO = new Color(220, 240, 233);
+        final Color FUNDO = new Color(245, 247, 248);
+        final Color BORDA = new Color(220, 225, 228);
+        final Color TEXTO_SECUNDARIO = new Color(100, 100, 100);
+
+        JDialog dialog = new JDialog(
+                this,
+                "Venda concluída",
+                true
+        );
+
+        dialog.setDefaultCloseOperation(
+                JDialog.DISPOSE_ON_CLOSE
+        );
+
+        JPanel cabecalho =
+                new JPanel(new BorderLayout(0, 4));
+
+        cabecalho.setBackground(VERDE_ESCURO);
+
+        cabecalho.setBorder(
+                BorderFactory.createEmptyBorder(
+                        18, 24, 18, 24
+                )
+        );
+
+        JLabel lblTitulo =
+                new JLabel("Venda concluída");
+
+        lblTitulo.setFont(
+                new Font("Arial", Font.BOLD, 20)
+        );
+
+        lblTitulo.setForeground(Color.WHITE);
+
+        JLabel lblSubtitulo = new JLabel(
+                "Venda nº " + idVenda
+                + "  •  Caixa " + caixa.getIdCaixa()
+        );
+
+        lblSubtitulo.setFont(
+                new Font("Arial", Font.PLAIN, 13)
+        );
+
+        lblSubtitulo.setForeground(
+                new Color(200, 220, 215)
+        );
+
+        cabecalho.add(lblTitulo, BorderLayout.NORTH);
+        cabecalho.add(lblSubtitulo, BorderLayout.SOUTH);
+
+        JPanel corpo =
+                new JPanel(new GridBagLayout());
+
+        corpo.setBackground(Color.WHITE);
+
+        corpo.setBorder(
+                BorderFactory.createEmptyBorder(
+                        22, 24, 20, 24
+                )
+        );
+
+        GridBagConstraints gbc =
+                new GridBagConstraints();
+
+        gbc.gridx = 0;
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JComponent icone = new JComponent() {
+
+            @Override
+            protected void paintComponent(Graphics g) {
+
+                Graphics2D g2 = (Graphics2D) g.create();
+
+                g2.setRenderingHint(
+                        RenderingHints.KEY_ANTIALIASING,
+                        RenderingHints.VALUE_ANTIALIAS_ON
+                );
+
+                int d = Math.min(getWidth(), getHeight());
+                int x = (getWidth() - d) / 2;
+                int y = (getHeight() - d) / 2;
+
+                g2.setColor(VERDE_CLARO);
+                g2.fillOval(x, y, d, d);
+
+                g2.setColor(VERDE);
+                g2.setStroke(new BasicStroke(
+                        d / 11f,
+                        BasicStroke.CAP_ROUND,
+                        BasicStroke.JOIN_ROUND
+                ));
+
+                g2.drawPolyline(
+                        new int[] {
+                            x + d * 28 / 100,
+                            x + d * 44 / 100,
+                            x + d * 72 / 100
+                        },
+                        new int[] {
+                            y + d * 52 / 100,
+                            y + d * 67 / 100,
+                            y + d * 36 / 100
+                        },
+                        3
+                );
+
+                g2.dispose();
+            }
+        };
+
+        icone.setPreferredSize(new Dimension(64, 64));
+
+        JLabel lblMensagem = new JLabel(
+                "Venda finalizada com sucesso!",
+                JLabel.CENTER
+        );
+
+        lblMensagem.setFont(
+                new Font("Arial", Font.BOLD, 16)
+        );
+
+        lblMensagem.setForeground(VERDE_ESCURO);
+
+        JLabel lblTotalTitulo = new JLabel(
+                "TOTAL DA COMPRA",
+                JLabel.CENTER
+        );
+
+        lblTotalTitulo.setFont(
+                new Font("Arial", Font.BOLD, 13)
+        );
+
+        lblTotalTitulo.setForeground(TEXTO_SECUNDARIO);
+
+        JLabel lblTotalValor = new JLabel(
+                formatoMoeda.format(total),
+                JLabel.CENTER
+        );
+
+        lblTotalValor.setFont(
+                new Font("Arial", Font.BOLD, 32)
+        );
+
+        lblTotalValor.setForeground(VERDE);
+
+        gbc.gridy = 0;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.insets = new Insets(0, 0, 12, 0);
+        corpo.add(icone, gbc);
+
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        gbc.gridy = 1;
+        gbc.insets = new Insets(0, 0, 18, 0);
+        corpo.add(lblMensagem, gbc);
+
+        gbc.gridy = 2;
+        gbc.insets = new Insets(0, 0, 2, 0);
+        corpo.add(lblTotalTitulo, gbc);
+
+        gbc.gridy = 3;
+        gbc.insets = new Insets(0, 0, 18, 0);
+        corpo.add(lblTotalValor, gbc);
+
+        JPanel painelDetalhes =
+                new JPanel(new GridBagLayout());
+
+        painelDetalhes.setBackground(FUNDO);
+
+        painelDetalhes.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createLineBorder(BORDA),
+                        BorderFactory.createEmptyBorder(
+                                12, 16, 12, 16
+                        )
+                )
+        );
+
+        String dataFormatada = dataVenda == null
+                ? "-"
+                : dataVenda.format(
+                        DateTimeFormatter.ofPattern(
+                                "dd/MM/yyyy HH:mm"
+                        )
+                );
+
+        String[][] detalhes = {
+            { "Número da venda", String.valueOf(idVenda) },
+            { "Pagamento", formaPagamento },
+            { "Caixa", String.valueOf(caixa.getIdCaixa()) },
+            { "Data", dataFormatada }
+        };
+
+        GridBagConstraints gd =
+                new GridBagConstraints();
+
+        gd.insets = new Insets(4, 0, 4, 0);
+
+        for (int i = 0; i < detalhes.length; i++) {
+
+            JLabel rotulo = new JLabel(detalhes[i][0]);
+
+            rotulo.setFont(
+                    new Font("Arial", Font.PLAIN, 13)
+            );
+
+            rotulo.setForeground(TEXTO_SECUNDARIO);
+
+            JLabel valor = new JLabel(detalhes[i][1]);
+
+            valor.setFont(
+                    new Font("Arial", Font.BOLD, 14)
+            );
+
+            valor.setForeground(VERDE_ESCURO);
+
+            gd.gridy = i;
+
+            gd.gridx = 0;
+            gd.weightx = 1;
+            gd.anchor = GridBagConstraints.WEST;
+            painelDetalhes.add(rotulo, gd);
+
+            gd.gridx = 1;
+            gd.weightx = 0;
+            gd.anchor = GridBagConstraints.EAST;
+            painelDetalhes.add(valor, gd);
+        }
+
+        gbc.gridy = 4;
+        gbc.insets = new Insets(0, 0, 0, 0);
+        corpo.add(painelDetalhes, gbc);
+
+        JPanel rodape = new JPanel(
+                new FlowLayout(FlowLayout.RIGHT, 10, 0)
+        );
+
+        rodape.setBackground(FUNDO);
+
+        rodape.setBorder(
+                BorderFactory.createCompoundBorder(
+                        BorderFactory.createMatteBorder(
+                                1, 0, 0, 0, BORDA
+                        ),
+                        BorderFactory.createEmptyBorder(
+                                14, 24, 14, 24
+                        )
+                )
+        );
+
+        JButton btnNovaVenda =
+                criarBotao("Nova venda", VERDE);
+
+        btnNovaVenda.setContentAreaFilled(false);
+        btnNovaVenda.setOpaque(true);
+
+        btnNovaVenda.addActionListener(e -> dialog.dispose());
+
+        rodape.add(btnNovaVenda);
+
+        JRootPane root = dialog.getRootPane();
+
+        root.setDefaultButton(btnNovaVenda);
+
+        root.registerKeyboardAction(
+                e -> dialog.dispose(),
+                KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                JComponent.WHEN_IN_FOCUSED_WINDOW
+        );
+
+        JPanel conteudo =
+                new JPanel(new BorderLayout());
+
+        conteudo.setBackground(Color.WHITE);
+
+        conteudo.add(cabecalho, BorderLayout.NORTH);
+        conteudo.add(corpo, BorderLayout.CENTER);
+        conteudo.add(rodape, BorderLayout.SOUTH);
+
+        dialog.setContentPane(conteudo);
+        dialog.setResizable(false);
+        dialog.pack();
+
+        dialog.setSize(
+                Math.max(dialog.getWidth(), 420),
+                dialog.getHeight()
+        );
+
+        dialog.setLocationRelativeTo(this);
+
+        SwingUtilities.invokeLater(
+                btnNovaVenda::requestFocusInWindow
+        );
+
+        dialog.setVisible(true);
+    }
 
     private void sair() {
 
@@ -1665,10 +2129,6 @@ public class CaixaGUI extends JFrame {
             dispose();
         }
     }
-
-    // =====================================================
-    // CLASSE AUXILIAR: ITEM DO CARRINHO
-    // =====================================================
 
     private static class ItemCarrinho {
 
@@ -1706,10 +2166,6 @@ public class CaixaGUI extends JFrame {
                     );
         }
     }
-
-    // =====================================================
-    // ABRIR FECHAMENTO DO CAIXA
-    // =====================================================
 
     private void abrirFechamento() {
 

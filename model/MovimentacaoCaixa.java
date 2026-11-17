@@ -11,7 +11,6 @@ public class MovimentacaoCaixa {
     private String descricao;
     private LocalDateTime data;
 
-    
     public int getIdMovimentacao() {
         return idMovimentacao;
     }
@@ -49,6 +48,5 @@ public class MovimentacaoCaixa {
         this.data = data;
     }
 
-    
 }
 

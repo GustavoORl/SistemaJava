@@ -27,10 +27,6 @@ import model.Usuario;
 
 public class CaixaAberturaGUI extends JFrame {
 
-    // =====================================================
-    // COMPONENTES DA TELA
-    // =====================================================
-
     private JTextField txtOperador;
     private JTextField txtCaixa;
     private JTextField txtData;
@@ -39,23 +35,11 @@ public class CaixaAberturaGUI extends JFrame {
     private JButton btnAbrir;
     private JButton btnCancelar;
 
-    // =====================================================
-    // USUÁRIO E DAO
-    // =====================================================
-
     private Usuario usuario;
     private CaixaDAO caixaDAO;
 
-    // =====================================================
-    // FORMATAÇÃO DA DATA
-    // =====================================================
-
     private final DateTimeFormatter formatter =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
-
-    // =====================================================
-    // CONSTRUTOR
-    // =====================================================
 
     public CaixaAberturaGUI(Usuario usuario) {
 
@@ -66,10 +50,6 @@ public class CaixaAberturaGUI extends JFrame {
         inicializarComponentes();
         configurarTela();
     }
-
-    // =====================================================
-    // CONFIGURAÇÃO DA JANELA
-    // =====================================================
 
     private void configurarJanela() {
 
@@ -86,10 +66,6 @@ public class CaixaAberturaGUI extends JFrame {
         setResizable(false);
     }
 
-    // =====================================================
-    // INICIALIZAÇÃO DOS COMPONENTES
-    // =====================================================
-
     private void inicializarComponentes() {
 
         JPanel painelPrincipal =
@@ -98,10 +74,6 @@ public class CaixaAberturaGUI extends JFrame {
         painelPrincipal.setBackground(
                 new Color(245, 247, 248)
         );
-
-        // =================================================
-        // CABEÇALHO
-        // =================================================
 
         JPanel painelCabecalho =
                 new JPanel(new BorderLayout());
@@ -130,10 +102,6 @@ public class CaixaAberturaGUI extends JFrame {
                 BorderLayout.WEST
         );
 
-        // =================================================
-        // PAINEL CENTRAL
-        // =================================================
-
         JPanel painelCentral =
                 new JPanel(new GridBagLayout());
 
@@ -158,10 +126,6 @@ public class CaixaAberturaGUI extends JFrame {
 
         gbc.fill =
                 GridBagConstraints.HORIZONTAL;
-
-        // =================================================
-        // OPERADOR
-        // =================================================
 
         JLabel lblOperador =
                 new JLabel("Operador:");
@@ -200,10 +164,6 @@ public class CaixaAberturaGUI extends JFrame {
                 gbc
         );
 
-        // =================================================
-        // IDENTIFICADOR DO CAIXA
-        // =================================================
-
         JLabel lblCaixa =
                 new JLabel("Caixa:");
 
@@ -238,10 +198,6 @@ public class CaixaAberturaGUI extends JFrame {
                 txtCaixa,
                 gbc
         );
-
-        // =================================================
-        // DATA
-        // =================================================
 
         JLabel lblData =
                 new JLabel("Data/Hora:");
@@ -280,10 +236,6 @@ public class CaixaAberturaGUI extends JFrame {
                 gbc
         );
 
-        // =================================================
-        // VALOR DE ABERTURA
-        // =================================================
-
         JLabel lblValor =
                 new JLabel("Valor de abertura:");
 
@@ -319,10 +271,6 @@ public class CaixaAberturaGUI extends JFrame {
                 gbc
         );
 
-        // =================================================
-        // RODAPÉ
-        // =================================================
-
         JPanel painelBotoes =
                 new JPanel(
                         new FlowLayout(
@@ -351,10 +299,6 @@ public class CaixaAberturaGUI extends JFrame {
         painelBotoes.add(btnAbrir);
         painelBotoes.add(btnCancelar);
 
-        // =================================================
-        // EVENTOS
-        // =================================================
-
         btnAbrir.addActionListener(
                 e -> abrirCaixa()
         );
@@ -366,10 +310,6 @@ public class CaixaAberturaGUI extends JFrame {
         txtValorAbertura.addActionListener(
                 e -> abrirCaixa()
         );
-
-        // =================================================
-        // MONTAGEM DA TELA
-        // =================================================
 
         painelPrincipal.add(
                 painelCabecalho,
@@ -389,10 +329,6 @@ public class CaixaAberturaGUI extends JFrame {
         setContentPane(painelPrincipal);
     }
 
-    // =====================================================
-    // CONFIGURAR TELA
-    // =====================================================
-
     private void configurarTela() {
 
         txtOperador.setText(
@@ -411,10 +347,6 @@ public class CaixaAberturaGUI extends JFrame {
                 txtCaixa.requestFocus()
         );
     }
-
-    // =====================================================
-    // CRIAR BOTÃO
-    // =====================================================
 
     private JButton criarBotao(
             String texto,
@@ -453,16 +385,7 @@ public class CaixaAberturaGUI extends JFrame {
         return botao;
     }
 
-    // =====================================================
-    // ABRIR CAIXA
-    // =====================================================
-
-
 private void abrirCaixa() {
-
-    // ---------------------------------------------
-    // IDENTIFICADOR DO CAIXA
-    // ---------------------------------------------
 
     String caixaTexto = txtCaixa.getText().trim();
 
@@ -479,13 +402,7 @@ private void abrirCaixa() {
         return;
     }
 
-    // Padroniza o identificador do caixa.
-    // Exemplo: "cx01" e "CX01" serão tratados igualmente.
     caixaTexto = caixaTexto.toUpperCase(java.util.Locale.ROOT);
-
-    // ---------------------------------------------
-    // VALOR DE ABERTURA
-    // ---------------------------------------------
 
     String valorTexto = txtValorAbertura.getText().trim();
 
@@ -502,20 +419,14 @@ private void abrirCaixa() {
         return;
     }
 
-    // ---------------------------------------------
-    // CONVERTER VALOR
-    // ---------------------------------------------
-
     BigDecimal valorAbertura;
 
     try {
 
-        // Aceita exemplos: 100,00 e 100.00
         valorTexto = valorTexto.replace(",", ".");
 
         valorAbertura = new BigDecimal(valorTexto);
 
-        // Valores monetários com duas casas decimais.
         valorAbertura = valorAbertura.setScale(
                 2,
                 java.math.RoundingMode.UNNECESSARY
@@ -535,10 +446,6 @@ private void abrirCaixa() {
         return;
     }
 
-    // ---------------------------------------------
-    // VALIDAR VALOR NEGATIVO
-    // ---------------------------------------------
-
     if (valorAbertura.compareTo(BigDecimal.ZERO) < 0) {
 
         JOptionPane.showMessageDialog(
@@ -552,13 +459,8 @@ private void abrirCaixa() {
         return;
     }
 
-    // ---------------------------------------------
-    // VERIFICAR CAIXA ABERTO
-    // ---------------------------------------------
-
     try {
 
-        // Consulta apenas o caixa físico informado.
         Caixa caixaAberto = caixaDAO.buscarCaixaAberto(caixaTexto);
 
         if (caixaAberto != null) {
@@ -575,10 +477,6 @@ private void abrirCaixa() {
             return;
         }
 
-        // ---------------------------------------------
-        // CONFIRMAR ABERTURA
-        // ---------------------------------------------
-
         int resposta = JOptionPane.showConfirmDialog(
                 this,
                 "Deseja abrir o caixa " + caixaTexto
@@ -594,10 +492,6 @@ private void abrirCaixa() {
             return;
         }
 
-        // ---------------------------------------------
-        // CRIAR OBJETO CAIXA
-        // ---------------------------------------------
-
         Caixa caixa = new Caixa();
 
         caixa.setIdCaixa(caixaTexto);
@@ -609,10 +503,6 @@ private void abrirCaixa() {
         caixa.setValorAbertura(valorAbertura);
 
         caixa.setStatus(StatusCaixa.ABERTO);
-
-        // ---------------------------------------------
-        // CADASTRAR NO BANCO
-        // ---------------------------------------------
 
         boolean sucesso = caixaDAO.cadastrar(caixa);
 
@@ -629,10 +519,6 @@ private void abrirCaixa() {
             return;
         }
 
-        // ---------------------------------------------
-        // ABERTURA REALIZADA
-        // ---------------------------------------------
-
         JOptionPane.showMessageDialog(
                 this,
                 "Caixa " + caixaTexto
@@ -641,10 +527,6 @@ private void abrirCaixa() {
                 JOptionPane.INFORMATION_MESSAGE
         );
 
-        // ---------------------------------------------
-        // ABRIR FRENTE DE CAIXA
-        // ---------------------------------------------
-
         CaixaGUI telaCaixa = new CaixaGUI(
                 usuario,
                 caixa
@@ -652,7 +534,6 @@ private void abrirCaixa() {
 
         telaCaixa.setVisible(true);
 
-        // Fecha a tela de abertura.
         dispose();
 
     } catch (Exception e) {
@@ -668,11 +549,6 @@ private void abrirCaixa() {
         e.printStackTrace();
     }
 }
-
-
-    // =====================================================
-    // CANCELAR
-    // =====================================================
 
     private void cancelar() {
 
@@ -692,10 +568,6 @@ private void abrirCaixa() {
             System.exit(0);
         }
     }
-
-    // =====================================================
-    // MAIN PARA TESTE
-    // =====================================================
 
     public static void main(String[] args) {
 

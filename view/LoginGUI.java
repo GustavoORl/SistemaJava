@@ -8,7 +8,6 @@ import java.util.concurrent.ExecutionException;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 
-/** Tela inicial do CoStock: autentica no banco e direciona por cargo. */
 public class LoginGUI extends JFrame {
     private static final Color VERDE = Color.decode("#173C38");
     private static final Color FUNDO = Color.decode("#F5F7F6");
@@ -126,7 +125,6 @@ public class LoginGUI extends JFrame {
         btnEntrar.setText("Verificando...");
         lblMensagem.setText(" ");
 
-        // Executa a consulta fora da thread gráfica para não congelar a tela.
         new SwingWorker<Usuario, Void>() {
             @Override protected Usuario doInBackground() {
                 return usuarioDAO.autenticar(email, senha);

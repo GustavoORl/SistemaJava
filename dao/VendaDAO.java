@@ -1,5 +1,6 @@
 package dao;
 
+import model.AlertaEstoque;
 import model.Venda;
 import model.itemVenda;
 import model.Pagamento;
@@ -9,11 +10,22 @@ import model.StatusPagamento;
 import java.math.BigDecimal;
 import java.sql.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class VendaDAO {
 
+    private final AlertaEstoqueDAO alertaEstoqueDAO = new AlertaEstoqueDAO();
+
+    public record ResultadoVenda(int idVenda, List<AlertaEstoque> alertas) { }
+
     public int finalizarVenda(Venda venda) throws SQLException {
+        return finalizarVendaComAlertas(venda).idVenda();
+    }
+
+    public ResultadoVenda finalizarVendaComAlertas(Venda venda) throws SQLException {
 
         validarVenda(venda);
 
@@ -25,10 +37,12 @@ public class VendaDAO {
                 validarCaixaAberto(conn, venda.getCaixa().getIdTabelaCaixa());
 
                 int idVenda = inserirVenda(conn, venda);
+                Map<Integer, Integer> quantidadesVendidas = new LinkedHashMap<>();
 
                 for (itemVenda item : venda.getItens()) {
                     inserirItem(conn, idVenda, item);
-                    baixarEstoque(conn, item);
+                    int quantidade = baixarEstoque(conn, item);
+                    quantidadesVendidas.merge(item.getProduto().getIdProduto(), quantidade, Integer::sum);
                     registrarMovimentacao(
                             conn,
                             item,
@@ -46,12 +60,13 @@ public class VendaDAO {
                     );
                 }
 
+                List<AlertaEstoque> alertas = registrarAlertasEstoque(conn, idVenda, quantidadesVendidas);
                 conn.commit();
 
                 venda.setIdVenda(idVenda);
                 venda.setStatus(StatusVenda.FINALIZADA);
 
-                return idVenda;
+                return new ResultadoVenda(idVenda, alertas);
 
             } catch (Exception e) {
 
@@ -289,7 +304,7 @@ public class VendaDAO {
         }
     }
 
-    private void baixarEstoque(
+    private int baixarEstoque(
             Connection conn,
             itemVenda item
     ) throws SQLException {
@@ -319,6 +334,35 @@ public class VendaDAO {
                 );
             }
         }
+        return quantidade;
+    }
+
+    private List<AlertaEstoque> registrarAlertasEstoque(Connection conn, int idVenda,
+            Map<Integer, Integer> quantidadesVendidas) throws SQLException {
+        String sql = """
+                SELECT p.nome, e.quantidade, p.estoque_minimo
+                FROM estoque e JOIN produtos p ON p.id_produto = e.id_produto
+                WHERE e.id_produto = ?
+                FOR SHARE
+                """;
+        List<AlertaEstoque> alertas = new ArrayList<>();
+        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+            for (var vendido : quantidadesVendidas.entrySet()) {
+                stmt.setInt(1, vendido.getKey());
+                try (ResultSet rs = stmt.executeQuery()) {
+                    if (rs.next()) {
+                        int restante = rs.getInt("quantidade");
+                        int minimo = rs.getInt("estoque_minimo");
+                        if (restante < minimo && restante + (long) vendido.getValue() >= minimo) {
+                            AlertaEstoque alerta = new AlertaEstoque(rs.getString("nome"), restante, minimo);
+                            alertaEstoqueDAO.registrar(conn, idVenda, vendido.getKey(), alerta);
+                            alertas.add(alerta);
+                        }
+                    }
+                }
+            }
+        }
+        return List.copyOf(alertas);
     }
 
     private void registrarMovimentacao(

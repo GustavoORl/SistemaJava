@@ -1,21 +1,25 @@
 package view;
 
 import dao.AdministradorConsultaDAO;
+import dao.AlertaEstoqueDAO;
 import dao.CargoDAO;
 import dao.CategoriaDAO;
 import dao.EstoqueDAO;
 import dao.ProdutoDAO;
 import dao.UsuarioDAO;
+import model.AlertaEstoque;
 import model.Cargo;
 import model.Categoria;
 import model.Estoque;
 import services.EstoqueService;
 import model.Produto;
 import model.Usuario;
+import notificacoes.ClienteNotificacoes;
 import java.awt.*;
 import java.awt.event.*;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.List;
 import java.util.regex.Pattern;
 import javax.swing.*;
 import javax.swing.border.*;
@@ -37,8 +41,14 @@ public class AdministradorGUI extends JFrame {
     private final Usuario usuarioLogado;
     private final boolean gerente;
     private final AdministradorConsultaDAO consultas = new AdministradorConsultaDAO();
+    private final AlertaEstoqueDAO alertaEstoqueDAO = new AlertaEstoqueDAO();
     private final Map<String, NavButton> menuButtons = new LinkedHashMap<>();
     private final JPanel content = new JPanel(new BorderLayout());
+    private final DefaultListModel<String> alertasEstoque = new DefaultListModel<>();
+    private final JLabel statusNotificacoes = label("Conectando ao servidor de alertas…", 12, false, MUTED);
+    private final JLabel ultimoAlerta = label("Carregando histórico de alertas…", 13, true, TEXT);
+    private final JButton botaoAlertas = new ActionButton("Alertas de estoque", false);
+    private final ClienteNotificacoes clienteNotificacoes;
     private JLabel pageTitle;
     private String currentPage = "Início";
     private JTable currentTable;
@@ -46,6 +56,7 @@ public class AdministradorGUI extends JFrame {
     private JLabel tableStatus;
     private TableRowSorter<DefaultTableModel> currentSorter;
     private long requestVersion = 0;
+    private long versaoHistoricoAlertas;
 
     public AdministradorGUI() {
         this(null, false);
@@ -70,6 +81,19 @@ public class AdministradorGUI extends JFrame {
         root.add(buildSidebar(), BorderLayout.WEST);
         root.add(buildWorkspace(), BorderLayout.CENTER);
         navigate("Início");
+        clienteNotificacoes = usuario == null ? null : new ClienteNotificacoes(
+                alerta -> SwingUtilities.invokeLater(this::carregarHistoricoAlertas),
+                conectado -> SwingUtilities.invokeLater(() -> atualizarStatusNotificacoes(conectado)));
+        if (clienteNotificacoes != null) {
+            carregarHistoricoAlertas();
+            clienteNotificacoes.iniciar();
+        }
+    }
+
+    @Override
+    public void dispose() {
+        if (clienteNotificacoes != null) clienteNotificacoes.close();
+        super.dispose();
     }
 
     private static Font font(int size, boolean bold) {
@@ -147,12 +171,80 @@ public class AdministradorGUI extends JFrame {
         pageTitle = label("Visão geral", 20, true, TEXT);
         header.add(pageTitle, BorderLayout.WEST);
         header.add(label("ADMINISTRADOR", 11, true, MUTED), BorderLayout.EAST);
-        workspace.add(header, BorderLayout.NORTH);
+        JPanel topo = new JPanel(new BorderLayout());
+        topo.add(header, BorderLayout.NORTH);
+        if (usuarioLogado != null) topo.add(criarBarraDeAlertas(), BorderLayout.CENTER);
+        workspace.add(topo, BorderLayout.NORTH);
 
         content.setBackground(CANVAS);
         content.setBorder(new EmptyBorder(26, 32, 26, 32));
         workspace.add(content, BorderLayout.CENTER);
         return workspace;
+    }
+
+    private JPanel criarBarraDeAlertas() {
+        JPanel barra = new JPanel(new BorderLayout(12, 0));
+        barra.setBackground(PRIMARY_LIGHT);
+        barra.setBorder(new EmptyBorder(8, 32, 8, 32));
+        barra.add(ultimoAlerta, BorderLayout.CENTER);
+
+        JList<String> lista = new JList<>(alertasEstoque);
+        lista.setFont(font(13, false));
+        JScrollPane scroll = new JScrollPane(lista);
+        scroll.setPreferredSize(new Dimension(480, 140));
+        JPopupMenu popup = new JPopupMenu();
+        popup.add(scroll);
+        botaoAlertas.setEnabled(false);
+        botaoAlertas.addActionListener(e -> popup.show(botaoAlertas,
+                botaoAlertas.getWidth() - popup.getPreferredSize().width, botaoAlertas.getHeight()));
+
+        JPanel controles = transparent(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        controles.add(statusNotificacoes);
+        controles.add(botaoAlertas);
+        barra.add(controles, BorderLayout.EAST);
+        return barra;
+    }
+
+    private void atualizarStatusNotificacoes(boolean conectado) {
+        if (isDisplayable()) {
+            statusNotificacoes.setText(conectado ? "Alertas conectados" : "Servidor de alertas indisponível");
+            if (conectado) carregarHistoricoAlertas();
+        }
+    }
+
+    private void carregarHistoricoAlertas() {
+        long versao = ++versaoHistoricoAlertas;
+        new SwingWorker<List<AlertaEstoque>, Void>() {
+            @Override protected List<AlertaEstoque> doInBackground() throws SQLException {
+                return alertaEstoqueDAO.listarRecentes();
+            }
+
+            @Override protected void done() {
+                if (!isDisplayable() || versao != versaoHistoricoAlertas) return;
+                try {
+                    atualizarHistoricoAlertas(get());
+                } catch (Exception e) {
+                    ultimoAlerta.setText("Não foi possível consultar o histórico de alertas");
+                    ultimoAlerta.setToolTipText(null);
+                    System.getLogger(AdministradorGUI.class.getName())
+                            .log(System.Logger.Level.WARNING, "Falha ao carregar alertas de estoque", e);
+                }
+            }
+        }.execute();
+    }
+
+    private void atualizarHistoricoAlertas(List<AlertaEstoque> alertas) {
+        alertasEstoque.clear();
+        for (AlertaEstoque alerta : alertas) {
+            String mensagem = "Estoque baixo — %s (%d em estoque, mínimo de %d)"
+                    .formatted(alerta.produto(), alerta.quantidade(), alerta.minimo());
+            alertasEstoque.addElement(mensagem);
+        }
+        boolean temAlertas = !alertasEstoque.isEmpty();
+        ultimoAlerta.setText(temAlertas ? alertasEstoque.firstElement() : "Nenhum alerta de estoque registrado");
+        ultimoAlerta.setToolTipText(temAlertas ? ultimoAlerta.getText() : null);
+        botaoAlertas.setText("Alertas de estoque (" + alertasEstoque.size() + ")");
+        botaoAlertas.setEnabled(temAlertas);
     }
 
     private void navigate(String page) {

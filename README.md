@@ -45,6 +45,21 @@ O projeto está organizado em camadas para facilitar a manutenção e a separaç
 4. Verifique se o MySQL Connector/J está disponível no projeto.
 5. Abra o projeto em uma IDE compatível com Java e execute a classe principal.
 
+## Notificações de estoque em tempo real
+
+O CoStock registra um alerta no MySQL quando uma venda confirmada faz a quantidade de um produto cair abaixo do estoque mínimo. O servidor repassa o aviso por TCP aos painéis de administração e gerência conectados. O painel carrega os 30 alertas mais recentes do banco ao abrir e atualiza a lista quando recebe um aviso.
+
+Na configuração do banco, execute `resources/alertas_estoque.sql` no mesmo banco usado pelo CoStock. O script pode ser executado novamente sem apagar o histórico.
+
+1. Execute a classe `notificacoes.ServidorNotificacoes` na IDE. Por padrão, ela escuta em `127.0.0.1:5050` e roda em um processo separado do CoStock.
+2. Execute `app.CoStock` em duas instâncias. Entre como administrador ou gerente em uma delas e como caixa na outra.
+3. No painel, aguarde o status **Alertas conectados**. Para testar, use um produto com estoque igual ao mínimo e com pelo menos uma unidade disponível.
+4. Finalize a venda de uma unidade desse produto. O nome do produto, o saldo e o mínimo aparecem na barra de alertas. Outra venda do mesmo produto enquanto ele já estiver abaixo do mínimo não dispara um novo aviso.
+
+O servidor atende conexões simultâneas com um pool de threads. Cada painel tem uma thread de escuta, e os caixas enviam os avisos em segundo plano. Os painéis se reconectam automaticamente e consultam o histórico para recuperar alertas gerados enquanto estavam desconectados.
+
+Para alterar a porta, use a opção de JVM `-Dcostock.notificacoes.porta=5051` no servidor e nas instâncias do CoStock.
+
 ## Equipe de desenvolvimento
 
 - Isabel Lopes

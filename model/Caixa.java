@@ -13,7 +13,6 @@ public class Caixa {
     private BigDecimal valorFechamento;
     private StatusCaixa status;
 
-
     public int getIdTabelaCaixa() {
         return idTabelaCaixa;
     }
@@ -63,5 +62,4 @@ public class Caixa {
         this.status = status;
     }
 
-    
 }

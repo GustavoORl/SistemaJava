@@ -19,10 +19,6 @@ public class main {
         UsuarioDAO usuarioDAO = new UsuarioDAO();
         ProdutoDAO produtoDAO = new ProdutoDAO();
 
-        // =====================================================
-        // 1. CRIAR CARGOS
-        // =====================================================
-
         Cargo administrador = new Cargo();
         administrador.setNome("Administrador");
 
@@ -37,24 +33,17 @@ public class main {
         System.out.println("Administrador ID: " + administrador.getId());
         System.out.println("Caixa ID: " + caixa.getId());
 
-
-        // =====================================================
-        // 2. CRIAR CATEGORIAS
-        // =====================================================
-
         Categoria alimentos = new Categoria();
         alimentos.setNome("Alimentos");
         alimentos.setDescricao("Produtos alimentícios");
 
         categoriaDAO.cadastrar(alimentos);
 
-
         Categoria bebidas = new Categoria();
         bebidas.setNome("Bebidas");
         bebidas.setDescricao("Bebidas em geral");
 
         categoriaDAO.cadastrar(bebidas);
-
 
         Categoria higiene = new Categoria();
         higiene.setNome("Higiene");
@@ -67,11 +56,6 @@ public class main {
         System.out.println("Alimentos ID: " + alimentos.getId());
         System.out.println("Bebidas ID: " + bebidas.getId());
         System.out.println("Higiene ID: " + higiene.getId());
-
-
-        // =====================================================
-        // 3. CRIAR ADMINISTRADOR
-        // =====================================================
 
         Usuario admin = new Usuario();
 
@@ -87,11 +71,6 @@ public class main {
 
         System.out.println("Administrador cadastrado!");
 
-
-        // =====================================================
-        // 4. CRIAR CAIXA
-        // =====================================================
-
         Usuario funcionarioCaixa = new Usuario();
 
         funcionarioCaixa.setNome("Carlos Oliveira");
@@ -105,11 +84,6 @@ public class main {
         usuarioDAO.cadastrar(funcionarioCaixa);
 
         System.out.println("Caixa cadastrado!");
-
-
-        // =====================================================
-        // 5. CRIAR PRODUTOS
-        // =====================================================
 
         cadastrarProduto(
                 produtoDAO,
@@ -254,21 +228,11 @@ public class main {
                 higiene
         );
 
-
-        // =====================================================
-        // FINAL
-        // =====================================================
-
         System.out.println();
         System.out.println("======================================");
         System.out.println("      BANCO POPULADO COM SUCESSO!");
         System.out.println("======================================");
     }
-
-
-    // =========================================================
-    // MÉTODO PARA CRIAR PRODUTO
-    // =========================================================
 
     private static void cadastrarProduto(
             ProdutoDAO produtoDAO,

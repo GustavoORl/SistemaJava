@@ -48,6 +48,5 @@ public class Pagamento {
         this.status = status;
     }
 
-    
 }
 

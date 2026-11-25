@@ -72,6 +72,7 @@ import model.TipoFormaPagamento;
 import model.Usuario;
 import model.Venda;
 import model.itemVenda;
+import notificacoes.ClienteNotificacoes;
 
 public class CaixaGUI extends JFrame {
 
@@ -1443,11 +1444,11 @@ public class CaixaGUI extends JFrame {
 
         try {
 
-            int idVenda =
-                    vendaDAO.finalizarVenda(venda);
+            VendaDAO.ResultadoVenda resultado = vendaDAO.finalizarVendaComAlertas(venda);
+            ClienteNotificacoes.publicar(resultado.alertas());
 
             exibirModalVendaConcluida(
-                    idVenda,
+                    resultado.idVenda(),
                     total,
                     formaSelecionada,
                     venda.getDataVenda()

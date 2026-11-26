@@ -49,7 +49,7 @@ public final class ClienteNotificacoes implements AutoCloseable {
         try {
             ENVIOS.execute(() -> enviar(alertas));
         } catch (RejectedExecutionException e) {
-            LOG.warning("Fila de notificações cheia. Os avisos desta venda foram descartados.");
+            LOG.warning("Fila de notificações cheia. Os avisos estão disponíveis no histórico de estoque.");
         }
     }
 
@@ -67,7 +67,7 @@ public final class ClienteNotificacoes implements AutoCloseable {
                 }
             }
         } catch (IOException e) {
-            LOG.log(Level.WARNING, "Não foi possível enviar todos os avisos de estoque da venda.", e);
+            LOG.log(Level.WARNING, "Não foi possível transmitir todos os avisos de estoque.", e);
         }
     }
 

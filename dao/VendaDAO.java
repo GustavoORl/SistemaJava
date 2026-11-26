@@ -1,6 +1,7 @@
 package dao;
 
 import model.AlertaEstoque;
+import model.AlertaEstoque.Tipo;
 import model.Venda;
 import model.itemVenda;
 import model.Pagamento;
@@ -339,28 +340,10 @@ public class VendaDAO {
 
     private List<AlertaEstoque> registrarAlertasEstoque(Connection conn, int idVenda,
             Map<Integer, Integer> quantidadesVendidas) throws SQLException {
-        String sql = """
-                SELECT p.nome, e.quantidade, p.estoque_minimo
-                FROM estoque e JOIN produtos p ON p.id_produto = e.id_produto
-                WHERE e.id_produto = ?
-                FOR SHARE
-                """;
         List<AlertaEstoque> alertas = new ArrayList<>();
-        try (PreparedStatement stmt = conn.prepareStatement(sql)) {
-            for (var vendido : quantidadesVendidas.entrySet()) {
-                stmt.setInt(1, vendido.getKey());
-                try (ResultSet rs = stmt.executeQuery()) {
-                    if (rs.next()) {
-                        int restante = rs.getInt("quantidade");
-                        int minimo = rs.getInt("estoque_minimo");
-                        if (restante < minimo && restante + (long) vendido.getValue() >= minimo) {
-                            AlertaEstoque alerta = new AlertaEstoque(rs.getString("nome"), restante, minimo);
-                            alertaEstoqueDAO.registrar(conn, idVenda, vendido.getKey(), alerta);
-                            alertas.add(alerta);
-                        }
-                    }
-                }
-            }
+        for (var vendido : quantidadesVendidas.entrySet()) {
+            alertas.add(alertaEstoqueDAO.registrarMovimentacao(
+                    conn, idVenda, vendido.getKey(), Tipo.SAIDA, vendido.getValue()));
         }
         return List.copyOf(alertas);
     }

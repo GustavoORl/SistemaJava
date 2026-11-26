@@ -7,8 +7,9 @@ import java.net.InetSocketAddress;
 import model.AlertaEstoque;
 
 final class ProtocoloNotificacoes {
-    static final int INSCREVER = 1;
-    static final int PUBLICAR = 2;
+    // Os comandos antigos usavam mensagens sem o tipo da movimentação.
+    static final int INSCREVER = 7;
+    static final int PUBLICAR = 8;
     static final int INSCRITO = 3;
     static final int ALERTA = 4;
     static final int PULSO = 5;
@@ -28,8 +29,9 @@ final class ProtocoloNotificacoes {
         String produto = entrada.readUTF();
         int quantidade = entrada.readInt();
         int minimo = entrada.readInt();
+        String tipo = entrada.readUTF();
         try {
-            return new AlertaEstoque(produto, quantidade, minimo);
+            return new AlertaEstoque(produto, quantidade, minimo, AlertaEstoque.Tipo.valueOf(tipo));
         } catch (IllegalArgumentException e) {
             throw new IOException(e.getMessage(), e);
         }
@@ -40,6 +42,7 @@ final class ProtocoloNotificacoes {
         saida.writeUTF(alerta.produto());
         saida.writeInt(alerta.quantidade());
         saida.writeInt(alerta.minimo());
+        saida.writeUTF(alerta.tipo().name());
         saida.flush();
     }
 }

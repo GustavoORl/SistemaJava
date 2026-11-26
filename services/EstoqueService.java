@@ -1,5 +1,6 @@
 package services;
 
+import dao.AlertaEstoqueDAO;
 import dao.EstoqueDAO;
 import exception.EstoqueInsuficienteException;
 import exception.ProdutoNaoEncontradoException;
@@ -9,6 +10,8 @@ import java.sql.SQLException;
 
 import dao.Conexao;
 import dao.MovimentacaoEstoqueDAO;
+import model.AlertaEstoque;
+import model.AlertaEstoque.Tipo;
 import model.MovimentacaoEstoque;
 import model.Produto;
 import model.Estoque;
@@ -18,8 +21,9 @@ public class EstoqueService {
 
     private final EstoqueDAO estoqueDAO = new EstoqueDAO();
     private final MovimentacaoEstoqueDAO movimentacaoDAO = new MovimentacaoEstoqueDAO();
+    private final AlertaEstoqueDAO alertaEstoqueDAO = new AlertaEstoqueDAO();
 
-    public void adicionarEstoque(int idProduto, int idUsuario,
+    public AlertaEstoque adicionarEstoque(int idProduto, int idUsuario,
         int quantidade, String motivo) throws ProdutoNaoEncontradoException {
 
     if (quantidade <= 0) {
@@ -65,9 +69,7 @@ public class EstoqueService {
 
             estoqueDAO.adicionarQuantidade(conn, idProduto, quantidade);
 
-            movimentacaoDAO.cadastrar(conn, movimentacao);
-
-            conn.commit();
+            return confirmarMovimentacao(conn, movimentacao, Tipo.ENTRADA);
 
         } catch (SQLException | ProdutoNaoEncontradoException | RuntimeException e) {
             try {
@@ -85,7 +87,7 @@ public class EstoqueService {
     }
 }
 
-    public void retirarEstoque(int idProduto, int idUsuario,
+    public AlertaEstoque retirarEstoque(int idProduto, int idUsuario,
                               int quantidade, String motivo)
             throws ProdutoNaoEncontradoException, EstoqueInsuficienteException {
         if (quantidade <= 0) {
@@ -129,9 +131,7 @@ public class EstoqueService {
 
                 estoqueDAO.retirarQuantidade(conn, idProduto, quantidade);
 
-                movimentacaoDAO.cadastrar(conn, movimentacao);
-
-                conn.commit();
+                return confirmarMovimentacao(conn, movimentacao, Tipo.SAIDA);
 
             } catch (SQLException | ProdutoNaoEncontradoException
                      | EstoqueInsuficienteException | RuntimeException e) {
@@ -150,7 +150,7 @@ public class EstoqueService {
         }
     }
 
-    public void ajustarEstoque(int idProduto, int idUsuario,
+    public AlertaEstoque ajustarEstoque(int idProduto, int idUsuario,
         int novaQuantidade, String motivo) throws ProdutoNaoEncontradoException {
 
     if (novaQuantidade < 0) {
@@ -204,9 +204,7 @@ public class EstoqueService {
 
             estoqueDAO.ajustarQuantidade(conn, idProduto, novaQuantidade);
 
-            movimentacaoDAO.cadastrar(conn, movimentacao);
-
-            conn.commit();
+            return confirmarMovimentacao(conn, movimentacao, Tipo.AJUSTE);
 
         } catch (SQLException | ProdutoNaoEncontradoException | RuntimeException e) {
             try {
@@ -223,6 +221,15 @@ public class EstoqueService {
         );
     }
 }
+
+    private AlertaEstoque confirmarMovimentacao(Connection conn, MovimentacaoEstoque movimentacao,
+            Tipo tipo) throws SQLException {
+        movimentacaoDAO.cadastrar(conn, movimentacao);
+        AlertaEstoque alerta = alertaEstoqueDAO.registrarMovimentacao(conn, null,
+                movimentacao.getProduto().getIdProduto(), tipo, movimentacao.getQuantidade());
+        conn.commit();
+        return alerta;
+    }
 
     public int consultarQuantidade(int idProduto) throws ProdutoNaoEncontradoException {
 

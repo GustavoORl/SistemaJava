@@ -236,15 +236,25 @@ public class AdministradorGUI extends JFrame {
     private void atualizarHistoricoAlertas(List<AlertaEstoque> alertas) {
         alertasEstoque.clear();
         for (AlertaEstoque alerta : alertas) {
-            String mensagem = "Estoque baixo — %s (%d em estoque, mínimo de %d)"
-                    .formatted(alerta.produto(), alerta.quantidade(), alerta.minimo());
-            alertasEstoque.addElement(mensagem);
+            alertasEstoque.addElement(formatarAlertaEstoque(alerta));
         }
         boolean temAlertas = !alertasEstoque.isEmpty();
         ultimoAlerta.setText(temAlertas ? alertasEstoque.firstElement() : "Nenhum alerta de estoque registrado");
         ultimoAlerta.setToolTipText(temAlertas ? ultimoAlerta.getText() : null);
         botaoAlertas.setText("Alertas de estoque (" + alertasEstoque.size() + ")");
         botaoAlertas.setEnabled(temAlertas);
+    }
+
+    private String formatarAlertaEstoque(AlertaEstoque alerta) {
+        return "%s — %s (%d em estoque, mínimo de %d)"
+                .formatted(alerta.tipo().rotulo(), alerta.produto(), alerta.quantidade(), alerta.minimo());
+    }
+
+    private void confirmarAlteracaoEstoque(AlertaEstoque alerta) {
+        ClienteNotificacoes.publicar(List.of(alerta));
+        carregarHistoricoAlertas();
+        JOptionPane.showMessageDialog(this, formatarAlertaEstoque(alerta),
+                "Estoque atualizado", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void navigate(String page) {
@@ -1197,17 +1207,17 @@ public class AdministradorGUI extends JFrame {
             }
 
             save.setEnabled(false);
-            new SwingWorker<Void, Void>() {
-                @Override protected Void doInBackground() throws Exception {
-                    new EstoqueService().ajustarEstoque(produto.getIdProduto(), usuarioLogado.getId(), qtd, textoMotivo);
-                    return null;
+            new SwingWorker<AlertaEstoque, Void>() {
+                @Override protected AlertaEstoque doInBackground() throws Exception {
+                    return new EstoqueService().ajustarEstoque(produto.getIdProduto(),
+                            usuarioLogado.getId(), qtd, textoMotivo);
                 }
                 @Override protected void done() {
                     save.setEnabled(true);
                     try {
-                        get();
+                        AlertaEstoque alerta = get();
                         dialog.dispose();
-                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Quantidade atualizada com sucesso.");
+                        confirmarAlteracaoEstoque(alerta);
                         reloadIfVisible("Estoque");
                     } catch (java.util.concurrent.ExecutionException ex) {
                         JOptionPane.showMessageDialog(dialog,
@@ -1344,19 +1354,19 @@ public class AdministradorGUI extends JFrame {
             int idProduto = estoque.getProduto().getIdProduto();
             int idUsuario = usuarioLogado.getId();
             save.setEnabled(false);
-            new SwingWorker<Void, Void>() {
-                @Override protected Void doInBackground() throws Exception {
+            new SwingWorker<AlertaEstoque, Void>() {
+                @Override protected AlertaEstoque doInBackground() throws Exception {
                     EstoqueService service = new EstoqueService();
-                    if ("ENTRADA".equals(tipoSelecionado)) service.adicionarEstoque(idProduto, idUsuario, qtd, textoMotivo);
-                    else service.retirarEstoque(idProduto, idUsuario, qtd, textoMotivo);
-                    return null;
+                    return "ENTRADA".equals(tipoSelecionado)
+                            ? service.adicionarEstoque(idProduto, idUsuario, qtd, textoMotivo)
+                            : service.retirarEstoque(idProduto, idUsuario, qtd, textoMotivo);
                 }
                 @Override protected void done() {
                     save.setEnabled(true);
                     try {
-                        get();
+                        AlertaEstoque alerta = get();
                         dialog.dispose();
-                        JOptionPane.showMessageDialog(AdministradorGUI.this, "Movimentação registrada com sucesso.");
+                        confirmarAlteracaoEstoque(alerta);
                         reloadIfVisible("Movimentações de Estoque");
                     } catch (java.util.concurrent.ExecutionException ex) {
                         JOptionPane.showMessageDialog(dialog,

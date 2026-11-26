@@ -40,6 +40,10 @@
       "name": "LoginGUI",
       "request": "launch",
       "mainClass": "view.LoginGUI",
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin
       "projectName": "SistemaJava_98920cdc"
     },
     {
@@ -48,13 +52,18 @@
       "request": "launch",
       "mainClass": "view.CaixaAberturaGUI",
       "projectName": "SistemaJava_98920cdc"
+<<<<<<< HEAD
+=======
+=======
     },
     {
       "type": "java",
       "name": "LoginGUI",
       "request": "launch",
       "mainClass": "view.LoginGUI",
+>>>>>>> origin
       "projectName": "SistemaJava_22cbaa8"
+>>>>>>> origin
     },
     {
       "type": "java",

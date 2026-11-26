@@ -5,13 +5,26 @@ import javax.swing.table.DefaultTableModel;
 
 public class AdministradorConsultaDAO {
     public DefaultTableModel listar(String tabela) throws SQLException {
-        if (!tabela.equals("usuarios") && !tabela.equals("cargos") &&
-            !tabela.equals("produtos") && !tabela.equals("categorias") &&
-            !tabela.equals("estoque") && !tabela.equals("caixas") &&
-            !tabela.equals("vendas") && !tabela.equals("movimentacoes_estoque")) {
-            throw new IllegalArgumentException("Tabela não autorizada: " + tabela);
-        }
-        String sql = "SELECT * FROM " + tabela;
+        String sql = switch (tabela) {
+            case "usuarios" -> "SELECT u.*, c.nome AS nome_cargo FROM usuarios u " +
+                               "LEFT JOIN cargos c ON c.id_cargo = u.id_cargo";
+            case "produtos" -> "SELECT p.*, c.nome AS nome_categoria FROM produtos p " +
+                               "LEFT JOIN categorias c ON c.id_categoria = p.id_categoria";
+            case "estoque" -> "SELECT e.*, p.nome AS nome_produto FROM estoque e " +
+                              "LEFT JOIN produtos p ON p.id_produto = e.id_produto";
+            case "caixas" -> "SELECT c.*, u.nome AS nome_usuario FROM caixas c " +
+                             "LEFT JOIN usuarios u ON u.id_usuario = c.id_usuario";
+            case "vendas" -> "SELECT v.*, u.nome AS nome_usuario FROM vendas v " +
+                             "LEFT JOIN usuarios u ON u.id_usuario = v.id_usuario";
+            case "movimentacoes_estoque" ->
+                "SELECT m.*, u.nome AS nome_usuario, p.nome AS nome_produto " +
+                "FROM movimentacoes_estoque m " +
+                "LEFT JOIN usuarios u ON u.id_usuario = m.id_usuario " +
+                "LEFT JOIN produtos p ON p.id_produto = m.id_produto";
+            case "cargos" -> "SELECT * FROM cargos";
+            case "categorias" -> "SELECT * FROM categorias";
+            default -> throw new IllegalArgumentException("Tabela não autorizada: " + tabela);
+        };
         try (Connection conn = Conexao.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {

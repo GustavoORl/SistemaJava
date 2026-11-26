@@ -551,6 +551,14 @@ public class AdministradorGUI extends JFrame {
                 try {
                     DefaultTableModel model = get();
                     target.setModel(model);
+                    for (String entity : new String[] {"USUARIO", "CARGO", "CATEGORIA", "PRODUTO"}) {
+                        int idColumn = target.convertColumnIndexToView(model.findColumn("ID " + entity));
+                        int nameColumn = target.convertColumnIndexToView(model.findColumn("NOME " + entity));
+                        if (idColumn >= 0 && nameColumn >= 0) {
+                            int destination = nameColumn < idColumn ? idColumn : idColumn + 1;
+                            target.moveColumn(nameColumn, destination);
+                        }
+                    }
                     target.setDefaultRenderer(Object.class, new BodyRenderer());
                     for (int i = 0; i < target.getColumnCount(); i++) {
                         target.getColumnModel().getColumn(i).setPreferredWidth(165);

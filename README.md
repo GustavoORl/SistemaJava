@@ -39,22 +39,78 @@ O projeto está organizado em camadas para facilitar a manutenção e a separaç
 
 ## Como executar
 
-1. Tenha o Java JDK instalado.
-2. Configure o MySQL no ambiente.
-3. Configure os dados de conexão no arquivo `Conexao.java`.
-4. Verifique se o MySQL Connector/J está disponível no projeto.
-5. Abra o projeto em uma IDE compatível com Java e execute a classe principal.
+### 1. Preparar o ambiente
+
+- Instale um JDK 17 ou superior e confirme no PowerShell que `java -version` e `javac -version` funcionam.
+- Instale o MySQL Server 8.0 e o MySQL Workbench. Inicie o serviço do MySQL Server.
+- Baixe ou clone o projeto e abra a pasta `SistemaJava`. O driver JDBC já está em `lib/mysql-connector-j-9.0.0.jar`.
+
+### 2. Importar o banco no MySQL Workbench
+
+1. Abra uma conexão com o MySQL local (`localhost:3306` na configuração padrão) usando uma conta com permissão para criar e alterar tabelas.
+2. Vá em **File > Open SQL Script**, abra [resources/script.sql](resources/script.sql) e execute o arquivo inteiro pelo botão de raio, sem selecionar um trecho. Esse arquivo cria as 20 tabelas do banco `gestao_vendas`, incluindo `alertas_estoque`, e carrega os usuários, produtos, saldos e formas de pagamento para a demonstração. Use uma instância de testes, pois uma nova execução recria as tabelas e substitui seus dados, incluindo o histórico de alertas.
+3. Atualize **Schemas** e confira se `gestao_vendas` contém as tabelas `usuarios`, `estoque` e `alertas_estoque`.
+
+### 3. Configurar a conexão Java
+
+Na pasta `dao`, crie o arquivo `Conexao.java` com o conteúdo abaixo. Substitua `SEU_USUARIO_MYSQL` e `SUA_SENHA_MYSQL` pelas credenciais usadas no Workbench. Se o MySQL usar outra porta, ajuste `3306` na URL. Esse arquivo fica na máquina de quem executa o projeto e é ignorado pelo Git.
+
+```java
+package dao;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class Conexao {
+    public static Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/gestao_vendas",
+                "SEU_USUARIO_MYSQL",
+                "SUA_SENHA_MYSQL"
+        );
+    }
+}
+```
+
+### 4. Compilar e iniciar o servidor de notificações
+
+No PowerShell, a partir da pasta `SistemaJava` (onde fica este README), execute os comandos abaixo. Prossiga para o último comando depois de a compilação terminar sem erros.
+
+```powershell
+$fontes = (Get-ChildItem -Path app,dao,exception,model,notificacoes,services,view -Recurse -Filter '*.java' -File).FullName
+javac -encoding UTF-8 -cp "lib/mysql-connector-j-9.0.0.jar" -d build $fontes
+java -cp "build;lib/mysql-connector-j-9.0.0.jar;." notificacoes.ServidorNotificacoes
+```
+
+Aguarde a mensagem **Servidor de notificações ouvindo em /127.0.0.1:5050** e mantenha esse terminal aberto.
+
+### 5. Abrir o CoStock
+
+Abra outro PowerShell na mesma pasta e execute:
+
+```powershell
+java -cp "build;lib/mysql-connector-j-9.0.0.jar;." app.CoStock
+```
+
+Entre na tela de login com uma das contas carregadas pelo script:
+
+| Perfil | E-mail | Senha |
+| --- | --- | --- |
+| Administrador | `admin@costock.com` | `123456` |
+| Caixa | `caixa@costock.com` | `123456` |
+
+Para usar os dois perfis ao mesmo tempo, repita o comando em um terceiro terminal e entre com a outra conta. Ao terminar, feche as janelas do CoStock e pressione **Ctrl+C** no terminal do servidor.
 
 ## Notificações de estoque em tempo real
 
 O CoStock registra no MySQL o saldo de cada produto após uma venda, entrada, saída ou ajuste confirmado. O servidor repassa o aviso por TCP aos painéis de administração e gerência conectados. O painel carrega os 30 avisos mais recentes do banco ao abrir e atualiza a lista quando recebe um aviso. Uma saída que faz o saldo cruzar o mínimo aparece como **Estoque baixo**.
 
-Na configuração ou atualização do banco, execute `resources/alertas_estoque.sql` no mesmo banco usado pelo CoStock. O script pode ser executado novamente sem apagar o histórico. Após atualizar o projeto, reinicie o servidor e as janelas do CoStock para carregar a versão atual do protocolo TCP.
-
-1. Execute a classe `notificacoes.ServidorNotificacoes` na IDE. Por padrão, ela escuta em `127.0.0.1:5050` e roda em um processo separado do CoStock.
-2. Execute `app.CoStock` em duas instâncias. Entre como administrador ou gerente em uma delas e como caixa na outra.
-3. No painel, aguarde o status **Alertas conectados**. Ajuste um produto de teste para 3 unidades em estoque.
-4. Venda uma unidade. A confirmação da venda e o painel mostram o saldo de 2 unidades. Em **Movimentações de estoque**, registre uma entrada de 20 unidades do mesmo produto. A confirmação e o painel mostram o novo saldo de 22 unidades.
+1. Com o servidor rodando, entre como administrador em uma janela e como caixa em outra. No painel do administrador, aguarde o status **Alertas conectados**.
+2. Na janela do caixa, informe um valor inicial, como `100,00`, e clique em **Confirmar abertura**.
+3. Em uma base recém-importada, busque o produto pelo código `TESTE000015` (Feijão Carioca 1kg). Adicione 4 unidades à venda, clique em **Finalizar venda**, selecione uma forma de pagamento e clique em **Confirmar venda**.
+4. Confira se o painel do administrador recebe um aviso de **Estoque baixo**. A venda reduz o saldo de 18 para 14 unidades, abaixo do mínimo de 15.
+5. No painel do administrador, abra **Movimentações de Estoque** e registre uma entrada de 20 unidades para o mesmo produto. Confira se o painel recebe a notificação com o novo saldo de 34 unidades.
 
 O servidor atende conexões simultâneas com um pool de threads. Cada painel tem uma thread de escuta, e os avisos são enviados em segundo plano. Os painéis se reconectam automaticamente e consultam o histórico para recuperar alertas gerados enquanto estavam desconectados.
 

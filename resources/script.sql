@@ -13,6 +13,22 @@
 create database if not exists `gestao_vendas` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */;
 use `gestao_vendas`;
 
+DROP TABLE IF EXISTS `alertas_estoque`;
+
+CREATE TABLE `alertas_estoque` (
+    id_alerta BIGINT NOT NULL AUTO_INCREMENT,
+    id_venda INT NULL,
+    id_produto INT NOT NULL,
+    produto VARCHAR(150) NOT NULL,
+    quantidade INT NOT NULL,
+    estoque_minimo INT NOT NULL,
+    tipo VARCHAR(20) NOT NULL DEFAULT 'ESTOQUE_BAIXO',
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id_alerta),
+    UNIQUE KEY alerta_por_venda_produto (id_venda, id_produto),
+    KEY alertas_por_data (criado_em, id_alerta)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 DROP TABLE IF EXISTS `caixas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;

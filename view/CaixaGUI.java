@@ -63,6 +63,7 @@ import javax.swing.event.DocumentListener;
 
 import javax.swing.table.DefaultTableModel;
 
+import model.AlertaEstoque;
 import model.Caixa;
 import model.Pagamento;
 import model.Produto;
@@ -72,6 +73,7 @@ import model.TipoFormaPagamento;
 import model.Usuario;
 import model.Venda;
 import model.itemVenda;
+import notificacoes.ClienteNotificacoes;
 
 public class CaixaGUI extends JFrame {
 
@@ -1443,14 +1445,15 @@ public class CaixaGUI extends JFrame {
 
         try {
 
-            int idVenda =
-                    vendaDAO.finalizarVenda(venda);
+            VendaDAO.ResultadoVenda resultado = vendaDAO.finalizarVendaComAlertas(venda);
+            ClienteNotificacoes.publicar(resultado.alertas());
 
             exibirModalVendaConcluida(
-                    idVenda,
+                    resultado.idVenda(),
                     total,
                     formaSelecionada,
-                    venda.getDataVenda()
+                    venda.getDataVenda(),
+                    resultado.alertas()
             );
 
             carrinho.clear();
@@ -1805,7 +1808,8 @@ public class CaixaGUI extends JFrame {
             int idVenda,
             BigDecimal total,
             String formaPagamento,
-            LocalDateTime dataVenda
+            LocalDateTime dataVenda,
+            List<AlertaEstoque> alertas
     ) {
 
         final Color VERDE_ESCURO = new Color(23, 60, 56);
@@ -2045,6 +2049,26 @@ public class CaixaGUI extends JFrame {
         gbc.gridy = 4;
         gbc.insets = new Insets(0, 0, 0, 0);
         corpo.add(painelDetalhes, gbc);
+
+        JPanel painelEstoque = new JPanel(new BorderLayout(0, 6));
+        painelEstoque.setOpaque(false);
+        JLabel tituloEstoque = new JLabel("Estoque após a venda");
+        tituloEstoque.setForeground(VERDE_ESCURO);
+        tituloEstoque.setFont(new Font("Arial", Font.BOLD, 13));
+        painelEstoque.add(tituloEstoque, BorderLayout.NORTH);
+
+        String[] saldos = alertas.stream()
+                .map(alerta -> "%s — %d em estoque".formatted(alerta.produto(), alerta.quantidade()))
+                .toArray(String[]::new);
+        JList<String> listaSaldos = new JList<>(saldos);
+        listaSaldos.setFixedCellHeight(23);
+        JScrollPane scrollSaldos = new JScrollPane(listaSaldos);
+        scrollSaldos.setPreferredSize(new Dimension(300, Math.min(saldos.length, 4) * 23 + 20));
+        painelEstoque.add(scrollSaldos, BorderLayout.CENTER);
+
+        gbc.gridy = 5;
+        gbc.insets = new Insets(12, 0, 0, 0);
+        corpo.add(painelEstoque, gbc);
 
         JPanel rodape = new JPanel(
                 new FlowLayout(FlowLayout.RIGHT, 10, 0)

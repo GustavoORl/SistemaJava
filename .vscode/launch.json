@@ -4,17 +4,29 @@
   "configurations": [
     {
       "type": "java",
+      "name": "Servidor de Notificações",
+      "request": "launch",
+      "mainClass": "notificacoes.ServidorNotificacoes",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "java",
+      "name": "CoStock",
+      "request": "launch",
+      "mainClass": "app.CoStock",
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "type": "java",
       "name": "main",
       "request": "launch",
-      "mainClass": "app.main",
-      "projectName": "SistemaJava_b1781c5a"
+      "mainClass": "app.main"
     },
     {
       "type": "java",
       "name": "LoginGUI",
       "request": "launch",
-      "mainClass": "view.LoginGUI",
-      "projectName": "SistemaJava_b1781c5a"
+      "mainClass": "view.LoginGUI"
     },
     {
       "type": "java",
@@ -29,6 +41,9 @@
       "request": "launch",
       "mainClass": "view.LoginGUI",
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> origin
       "projectName": "SistemaJava_98920cdc"
     },
     {
@@ -37,7 +52,16 @@
       "request": "launch",
       "mainClass": "view.CaixaAberturaGUI",
       "projectName": "SistemaJava_98920cdc"
+<<<<<<< HEAD
 =======
+=======
+    },
+    {
+      "type": "java",
+      "name": "LoginGUI",
+      "request": "launch",
+      "mainClass": "view.LoginGUI",
+>>>>>>> origin
       "projectName": "SistemaJava_22cbaa8"
 >>>>>>> origin
     },
